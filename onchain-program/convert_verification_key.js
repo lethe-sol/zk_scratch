@@ -1,6 +1,6 @@
 const fs = require('fs');
 
-const vkPath = '../circuits/verification_key.json';
+const vkPath = './verification_key.json';
 if (!fs.existsSync(vkPath)) {
     console.error('Verification key not found at:', vkPath);
     process.exit(1);
