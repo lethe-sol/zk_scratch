@@ -1,0 +1,24 @@
+[package]
+name = "tornado-solana"
+version = "0.1.0"
+description = "Created with Anchor"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "tornado_solana"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+
+[dependencies]
+anchor-lang = "0.29.0"
+anchor-spl = "0.29.0"
+light-batched-merkle-tree = { git = "https://github.com/Lightprotocol/light-protocol" }
+light-account-compression = { git = "https://github.com/Lightprotocol/light-protocol", features = ["cpi"] }
+groth16-solana = { git = "https://github.com/Lightprotocol/groth16-solana" }
+light-poseidon = { git = "https://github.com/Lightprotocol/light-poseidon" }
