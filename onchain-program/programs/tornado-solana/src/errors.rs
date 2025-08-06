@@ -25,4 +25,10 @@ pub enum ErrorCode {
     
     #[msg("Serialization error")]
     SerializationError,
+    
+    #[msg("Invalid verification key")]
+    InvalidVerificationKey,
+    
+    #[msg("Light Protocol CPI failed")]
+    LightProtocolError,
 }

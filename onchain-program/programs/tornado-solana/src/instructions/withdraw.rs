@@ -59,21 +59,27 @@ pub fn process_withdraw(
     
     let verifier = Groth16Verifier::new(&tornado_pool.verification_key)?;
     
-    let public_inputs_bytes = [
-        public_inputs.root,
-        public_inputs.nullifier_hash,
-        public_inputs.recipient_1,
-        public_inputs.recipient_2,
-        public_inputs.relayer_1,
-        public_inputs.relayer_2,
-        public_inputs.fee,
-    ];
+    let mut public_inputs_fields = Vec::new();
+    
+    let bytes_to_field = |bytes: &[u8; 32]| -> [u8; 32] {
+        let mut field_bytes = [0u8; 32];
+        field_bytes[..31].copy_from_slice(&bytes[..31]);
+        field_bytes
+    };
+    
+    public_inputs_fields.push(bytes_to_field(&public_inputs.root));
+    public_inputs_fields.push(bytes_to_field(&public_inputs.nullifier_hash));
+    public_inputs_fields.push(bytes_to_field(&public_inputs.recipient_1));
+    public_inputs_fields.push(bytes_to_field(&public_inputs.recipient_2));
+    public_inputs_fields.push(bytes_to_field(&public_inputs.relayer_1));
+    public_inputs_fields.push(bytes_to_field(&public_inputs.relayer_2));
+    public_inputs_fields.push(bytes_to_field(&public_inputs.fee));
     
     let is_valid = verifier.verify_proof(
         &proof.pi_a,
         &proof.pi_b,
         &proof.pi_c,
-        &public_inputs_bytes,
+        &public_inputs_fields,
     )?;
     
     require!(is_valid, ErrorCode::InvalidProof);
@@ -108,7 +114,7 @@ pub fn process_withdraw(
         leaves_queue_indices,
         leaf_indices,
         proofs,
-    )?;
+    ).map_err(|_| ErrorCode::LightProtocolError)?;
     
     **tornado_pool.to_account_info().try_borrow_mut_lamports()? -= tornado_pool.deposit_amount;
     **ctx.accounts.recipient.to_account_info().try_borrow_mut_lamports()? += tornado_pool.deposit_amount;

@@ -32,6 +32,8 @@ pub fn process_initialize(
     
     require!(deposit_amount > 0, ErrorCode::InvalidDepositAmount);
     
+    require!(verification_key.ic.len() == 8, ErrorCode::InvalidVerificationKey);
+    
     tornado_pool.authority = ctx.accounts.authority.key();
     tornado_pool.deposit_amount = deposit_amount;
     tornado_pool.deposit_count = 0;

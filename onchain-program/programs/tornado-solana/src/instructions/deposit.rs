@@ -61,7 +61,8 @@ pub fn process_deposit(
         cpi_accounts,
     );
     
-    light_account_compression::cpi::insert_into_queues(cpi_ctx, insert_data)?;
+    light_account_compression::cpi::insert_into_queues(cpi_ctx, insert_data)
+        .map_err(|_| ErrorCode::LightProtocolError)?;
     
     tornado_pool.deposit_count += 1;
     
