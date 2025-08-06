@@ -1,0 +1,28 @@
+{
+  "name": "tornado-solana-circuits",
+  "version": "1.0.0",
+  "description": "ZK circuits for Tornado Cash on Solana using Light Protocol",
+  "main": "index.js",
+  "scripts": {
+    "compile": "./compile.sh",
+    "test": "node test/circuit_test.js",
+    "verify-params": "node test/parameter_verification.js"
+  },
+  "dependencies": {
+    "snarkjs": "^0.7.0",
+    "circomlib": "^0.5.1"
+  },
+  "devDependencies": {
+    "mocha": "^10.0.0",
+    "chai": "^4.3.0"
+  },
+  "keywords": [
+    "zk",
+    "circom",
+    "tornado",
+    "solana",
+    "privacy"
+  ],
+  "author": "Tornado Solana Team",
+  "license": "MIT"
+}
