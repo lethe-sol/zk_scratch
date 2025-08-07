@@ -1,0 +1,22 @@
+[package]
+name = "tornado-solana"
+version = "0.1.0"
+description = "Privacy-preserving SOL mixer using ZK proofs and account compression"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "tornado_solana"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+
+[dependencies]
+anchor-lang = "0.31.1"
+anchor-spl = "0.31.1"
+spl-account-compression = "0.3.0"
+solana-program = "1.18.0"
