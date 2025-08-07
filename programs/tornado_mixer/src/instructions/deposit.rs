@@ -20,16 +20,16 @@ pub struct Deposit<'info> {
     pub vault: SystemAccount<'info>,
 
     #[account(mut)]
-    pub merkle_tree: UncheckedAccount<'info>,
+    pub merkle_tree: AccountInfo<'info>,
 
-    pub tree_authority: UncheckedAccount<'info>,
+    pub tree_authority: AccountInfo<'info>,
 
     #[account(mut)]
     pub depositor: Signer<'info>,
 
-    pub compression_program: UncheckedAccount<'info>,
+    pub compression_program: AccountInfo<'info>,
 
-    pub noop_program: UncheckedAccount<'info>,
+    pub noop_program: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,
 }
@@ -53,14 +53,15 @@ pub fn deposit(ctx: Context<Deposit>, commitment: [u8; 32]) -> Result<()> {
     )?;
 
 
-    let cpi_ctx = CpiContext::new_with_signer(
+    let cpi_accounts = spl_account_compression::cpi::accounts::Modify {
+        merkle_tree: ctx.accounts.merkle_tree.to_account_info(),
+        authority: ctx.accounts.tree_authority.to_account_info(),
+        noop: ctx.accounts.noop_program.to_account_info(),
+    };
+
+    let cpi_ctx = CpiContext::new(
         ctx.accounts.compression_program.to_account_info(),
-        spl_account_compression::cpi::accounts::Modify {
-            merkle_tree: ctx.accounts.merkle_tree.to_account_info(),
-            authority: ctx.accounts.tree_authority.to_account_info(),
-            noop: ctx.accounts.noop_program.to_account_info(),
-        },
-        &[],
+        cpi_accounts,
     );
 
     append(cpi_ctx, commitment).map_err(|e| {
