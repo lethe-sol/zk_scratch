@@ -22,8 +22,3 @@ program = "spl_account_compression.so"
 [[test.genesis]]
 address = "noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV"
 program = "spl_noop.so"
-
-# Light Protocol Groth16 verifier program ID (placeholder)
-[[test.genesis]]
-address = "22222222222222222222222222222222"
-program = "light_groth16_verifier.so"
