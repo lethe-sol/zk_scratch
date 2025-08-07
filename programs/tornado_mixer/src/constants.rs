@@ -9,7 +9,7 @@ pub const STATE_SEED: &[u8] = b"state";
 #[constant]
 pub const NULLIFIER_SEED: &[u8] = b"nullifier";
 
-pub const MAX_RECENT_ROOTS: usize = 100;
+pub const MAX_RECENT_ROOTS: usize = 32;
 
 pub const MERKLE_TREE_LEVELS: usize = 20;
 
