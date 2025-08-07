@@ -102,9 +102,15 @@ impl MerkleTree {
     }
 
     fn poseidon_hash(&self, left: &[u8; 32], right: &[u8; 32]) -> Result<[u8; 32]> {
-        let params = light_poseidon::parameters::bn254_x5();
-        let mut hasher = Poseidon::new(&params);
-        hasher.hash(&[*left, *right])
+        let left_field = light_poseidon::utils::bytes_to_field(left)
+            .map_err(|_| crate::errors::ErrorCode::HashingError)?;
+        let right_field = light_poseidon::utils::bytes_to_field(right)
+            .map_err(|_| crate::errors::ErrorCode::HashingError)?;
+        
+        let result = light_poseidon::Poseidon::hash(&[left_field, right_field])
+            .map_err(|_| crate::errors::ErrorCode::HashingError)?;
+        
+        light_poseidon::utils::field_to_bytes(&result)
             .map_err(|_| crate::errors::ErrorCode::HashingError)
     }
 }
