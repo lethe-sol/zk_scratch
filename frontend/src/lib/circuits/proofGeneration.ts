@@ -48,8 +48,8 @@ export class ProofGenerator {
     merkleProof: MerkleProof,
     root: string
   ): Promise<{ proof: FormattedProof; publicInputs: any }> {
-    const commitment = generateCommitment(nullifier, secret);
-    const nullifierHash = generateNullifierHash(nullifier);
+    const commitment = await generateCommitment(nullifier, secret);
+    const nullifierHash = await generateNullifierHash(nullifier);
     
     const recipientSplit = splitPubkeyForCircuit(recipient);
     const relayerSplit = splitPubkeyForCircuit(relayer);

@@ -11,10 +11,10 @@ export interface TornadoNote {
 export class NoteManager {
   private static readonly STORAGE_KEY = 'tornado_notes';
 
-  static generateNote(amount: number = 100000000): TornadoNote {
+  static async generateNote(amount: number = 100000000): Promise<TornadoNote> {
     const nullifier = this.generateRandomHex(64);
     const secret = this.generateRandomHex(64);
-    const commitment = generateCommitment(nullifier, secret);
+    const commitment = await generateCommitment(nullifier, secret);
     
     return {
       nullifier,
@@ -41,14 +41,14 @@ export class NoteManager {
     return notes.find(note => note.commitment === commitment) || null;
   }
 
-  static parseNoteString(noteString: string): TornadoNote | null {
+  static async parseNoteString(noteString: string): Promise<TornadoNote | null> {
     try {
       const parts = noteString.split('-');
       if (parts.length !== 3) return null;
       
       const [nullifier, secret, amountStr] = parts;
       const amount = parseInt(amountStr);
-      const commitment = generateCommitment(nullifier, secret);
+      const commitment = await generateCommitment(nullifier, secret);
       
       return {
         nullifier,
@@ -67,9 +67,9 @@ export class NoteManager {
     return `${note.nullifier}-${note.secret}-${note.amount}`;
   }
 
-  static validateNote(note: TornadoNote): boolean {
+  static async validateNote(note: TornadoNote): Promise<boolean> {
     try {
-      const expectedCommitment = generateCommitment(note.nullifier, note.secret);
+      const expectedCommitment = await generateCommitment(note.nullifier, note.secret);
       return expectedCommitment.toString() === note.commitment;
     } catch (error) {
       return false;

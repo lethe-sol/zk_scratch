@@ -14,15 +14,18 @@ export class MerkleTreeClient {
     this.depth = depth;
     this.zeroValue = BigInt(0);
     this.nodes = new Map();
-    this.initializeZeroHashes();
   }
 
-  private initializeZeroHashes() {
+  async initialize() {
+    await this.initializeZeroHashes();
+  }
+
+  private async initializeZeroHashes() {
     let currentHash = this.zeroValue;
     for (let i = 0; i < this.depth; i++) {
       const key = `${i}_0`;
       this.nodes.set(key, currentHash);
-      currentHash = poseidonHash([currentHash, currentHash]);
+      currentHash = await poseidonHash([currentHash, currentHash]);
     }
   }
 
@@ -40,7 +43,7 @@ export class MerkleTreeClient {
     this.nodes.set(key, value);
   }
 
-  insertLeaf(leafIndex: number, leafValue: bigint): bigint {
+  async insertLeaf(leafIndex: number, leafValue: bigint): Promise<bigint> {
     this.setNode(0, leafIndex, leafValue);
 
     let currentIndex = leafIndex;
@@ -52,8 +55,8 @@ export class MerkleTreeClient {
       const siblingValue = this.getNode(level, siblingIndex);
 
       const parentValue = isRightNode 
-        ? poseidonHash([siblingValue, currentValue])
-        : poseidonHash([currentValue, siblingValue]);
+        ? await poseidonHash([siblingValue, currentValue])
+        : await poseidonHash([currentValue, siblingValue]);
 
       const parentIndex = Math.floor(currentIndex / 2);
       this.setNode(level + 1, parentIndex, parentValue);
@@ -89,11 +92,11 @@ export class MerkleTreeClient {
     return this.getNode(this.depth, 0);
   }
 
-  verifyMerkleProof(
+  async verifyMerkleProof(
     leaf: bigint,
     leafIndex: number,
     proof: MerkleProof
-  ): boolean {
+  ): Promise<boolean> {
     let currentHash = leaf;
     let currentIndex = leafIndex;
 
@@ -102,8 +105,8 @@ export class MerkleTreeClient {
       const isRightNode = proof.pathIndices[i];
 
       currentHash = isRightNode
-        ? poseidonHash([pathElement, currentHash])
-        : poseidonHash([currentHash, pathElement]);
+        ? await poseidonHash([pathElement, currentHash])
+        : await poseidonHash([currentHash, pathElement]);
 
       currentIndex = Math.floor(currentIndex / 2);
     }

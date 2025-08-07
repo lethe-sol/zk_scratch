@@ -28,9 +28,10 @@ export const DEPOSIT_AMOUNT = 0.1 * LAMPORTS_PER_SOL; // 0.1 SOL in lamports
 let merkleTreeClient: MerkleTreeClient | null = null;
 let proofGenerator: ProofGenerator | null = null;
 
-export function getMerkleTreeClient(): MerkleTreeClient {
+export async function getMerkleTreeClient(): Promise<MerkleTreeClient> {
   if (!merkleTreeClient) {
     merkleTreeClient = new MerkleTreeClient(20);
+    await merkleTreeClient.initialize();
   }
   return merkleTreeClient;
 }
@@ -67,9 +68,9 @@ export async function initializeProgram(wallet: AnchorWallet): Promise<string> {
 
 export async function deposit(wallet: AnchorWallet): Promise<{ tx: string; note: TornadoNote }> {
   const program = getProgram(wallet);
-  const merkleTree = getMerkleTreeClient();
+  const merkleTree = await getMerkleTreeClient();
   
-  const note = NoteManager.generateNote(DEPOSIT_AMOUNT);
+  const note = await NoteManager.generateNote(DEPOSIT_AMOUNT);
   
   const commitment = await generateCommitment(note.nullifier, note.secret);
   const commitmentBytes = Array.from(bigIntToBytes32(commitment));
@@ -82,7 +83,7 @@ export async function deposit(wallet: AnchorWallet): Promise<{ tx: string; note:
   const poolInfo = await program.account['tornadoPool'].fetch(tornadoPoolPda);
   const leafIndex = poolInfo.depositCount.toNumber();
   
-  merkleTree.insertLeaf(leafIndex, commitment);
+  await merkleTree.insertLeaf(leafIndex, commitment);
   
   const tx = await program.methods
     .deposit(commitmentBytes)
@@ -102,10 +103,10 @@ export async function withdraw(
   recipient: PublicKey
 ): Promise<string> {
   const program = getProgram(wallet);
-  const merkleTree = getMerkleTreeClient();
+  const merkleTree = await getMerkleTreeClient();
   const proofGen = getProofGenerator();
   
-  const note = NoteManager.parseNoteString(noteString);
+  const note = await NoteManager.parseNoteString(noteString);
   if (!note) {
     throw new Error('Invalid note format');
   }
@@ -125,7 +126,7 @@ export async function withdraw(
   const leafIndex = 0;
   const commitment = await generateCommitment(note.nullifier, note.secret);
   
-  merkleTree.insertLeaf(leafIndex, commitment);
+  await merkleTree.insertLeaf(leafIndex, commitment);
   const merkleProof = merkleTree.generateMerkleProof(leafIndex);
   
   const { proof, publicInputs } = await proofGen.generateWithdrawProof(
