@@ -8,7 +8,7 @@ pub mod merkle_tree;
 use instructions::*;
 use state::*;
 
-declare_id!("wFafLjoy9oEs8jqWC65kDMB4MdpBCoT5imbqsddqFJJ");
+declare_id!("HmeWacjYfdiDxoS9YAWomWUhrdwqePgwgqtPH6GCKJwR");
 
 #[program]
 pub mod tornado_solana {
