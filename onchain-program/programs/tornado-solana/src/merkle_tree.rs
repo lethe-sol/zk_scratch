@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use light_poseidon::{Poseidon, PoseidonHasher};
+use light_poseidon::{Poseidon, PoseidonBytesHasher};
 
 pub const TREE_DEPTH: usize = 20;
 pub const MAX_STORED_NODES: usize = 1000; // Store only recent nodes, not full tree
@@ -102,15 +102,10 @@ impl MerkleTree {
     }
 
     fn poseidon_hash(&self, left: &[u8; 32], right: &[u8; 32]) -> Result<[u8; 32]> {
-        let left_field = light_poseidon::utils::bytes_to_field(left)
+        use ark_bn254::Fr;
+        let mut hasher = Poseidon::<Fr>::new_circom(2)
             .map_err(|_| crate::errors::ErrorCode::HashingError)?;
-        let right_field = light_poseidon::utils::bytes_to_field(right)
-            .map_err(|_| crate::errors::ErrorCode::HashingError)?;
-        
-        let result = light_poseidon::Poseidon::hash(&[left_field, right_field])
-            .map_err(|_| crate::errors::ErrorCode::HashingError)?;
-        
-        light_poseidon::utils::field_to_bytes(&result)
+        hasher.hash_bytes_be(&[left, right])
             .map_err(|_| crate::errors::ErrorCode::HashingError)
     }
 }
