@@ -2,22 +2,22 @@ use anchor_lang::prelude::*;
 
 #[error_code]
 pub enum ErrorCode {
-    #[msg("Invalid ZK proof provided")]
+    #[msg("Invalid proof provided")]
     InvalidProof,
     #[msg("Invalid recipient address")]
     InvalidRecipient,
-    #[msg("Nullifier already used")]
-    NullifierAlreadyUsed,
-    #[msg("Invalid merkle root")]
-    InvalidMerkleRoot,
-    #[msg("Insufficient funds in pool")]
+    #[msg("Insufficient funds for deposit")]
     InsufficientFunds,
-    #[msg("Invalid deposit amount")]
-    InvalidDepositAmount,
-    #[msg("Invalid commitment")]
-    InvalidCommitment,
     #[msg("Invalid verification key")]
     InvalidVerificationKey,
-    #[msg("Light Protocol CPI failed")]
-    LightProtocolError,
+    #[msg("Merkle tree is full")]
+    TreeFull,
+    #[msg("Invalid proof length")]
+    InvalidProofLength,
+    #[msg("Nullifier already used")]
+    NullifierAlreadyUsed,
+    #[msg("Invalid merkle proof")]
+    InvalidMerkleProof,
+    #[msg("Hashing error")]
+    HashingError,
 }

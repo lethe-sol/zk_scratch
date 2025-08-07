@@ -3,6 +3,7 @@ use anchor_lang::prelude::*;
 pub mod instructions;
 pub mod state;
 pub mod errors;
+pub mod merkle_tree;
 
 use instructions::*;
 use state::*;
@@ -34,10 +35,8 @@ pub mod tornado_solana {
         proof_b: [u8; 128],
         proof_c: [u8; 64],
         public_inputs: WithdrawPublicInputs,
-        change_log_indices: Vec<u64>,
-        leaves_queue_indices: Vec<u16>,
-        leaf_indices: Vec<u64>,
-        proofs: Vec<Vec<[u8; 32]>>,
+        merkle_proof: Vec<[u8; 32]>,
+        path_indices: Vec<bool>,
     ) -> Result<()> {
         instructions::withdraw::process_withdraw(
             ctx,
@@ -45,10 +44,8 @@ pub mod tornado_solana {
             proof_b,
             proof_c,
             public_inputs,
-            change_log_indices,
-            leaves_queue_indices,
-            leaf_indices,
-            proofs,
+            merkle_proof,
+            path_indices,
         )
     }
 }

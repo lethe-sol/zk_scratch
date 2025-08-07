@@ -1,11 +1,7 @@
 use anchor_lang::prelude::*;
 use groth16_solana::groth16::{Groth16Verifier, Groth16Verifyingkey};
-use account_compression::{
-    program::AccountCompression,
-    cpi::accounts::NullifyLeaves,
-    RegisteredProgram,
-};
 use crate::state::TornadoPool;
+use crate::merkle_tree::{MerkleTree, NullifierSet};
 use crate::errors::ErrorCode;
 
 #[derive(Accounts)]
@@ -20,20 +16,23 @@ pub struct Withdraw<'info> {
     )]
     pub tornado_pool: Account<'info, TornadoPool>,
     
+    #[account(
+        seeds = [b"merkle_tree"],
+        bump = merkle_tree.bump,
+    )]
+    pub merkle_tree: Account<'info, MerkleTree>,
+    
+    #[account(
+        mut,
+        seeds = [b"nullifier_set"],
+        bump = nullifier_set.bump,
+    )]
+    pub nullifier_set: Account<'info, NullifierSet>,
+    
     /// CHECK: Recipient account for withdrawal funds
     #[account(mut)]
     pub recipient: UncheckedAccount<'info>,
     
-    pub authority: Signer<'info>,
-    pub registered_program_pda: Option<Account<'info, RegisteredProgram>>,
-    /// CHECK: Log wrapper program for Light Protocol compression
-    pub log_wrapper: UncheckedAccount<'info>,
-    #[account(mut)]
-    pub merkle_tree: AccountInfo<'info>,
-    #[account(mut)]
-    pub nullifier_queue: AccountInfo<'info>,
-    
-    pub account_compression_program: Program<'info, AccountCompression>,
     pub system_program: Program<'info, System>,
 }
 
@@ -54,12 +53,12 @@ pub fn process_withdraw(
     proof_b: [u8; 128],
     proof_c: [u8; 64],
     public_inputs: WithdrawPublicInputs,
-    change_log_indices: Vec<u64>,
-    leaves_queue_indices: Vec<u16>,
-    leaf_indices: Vec<u64>,
-    proofs: Vec<Vec<[u8; 32]>>,
+    merkle_proof: Vec<[u8; 32]>,
+    path_indices: Vec<bool>,
 ) -> Result<()> {
     let tornado_pool = &mut ctx.accounts.tornado_pool;
+    let merkle_tree = &ctx.accounts.merkle_tree;
+    let nullifier_set = &mut ctx.accounts.nullifier_set;
     
     let light_vk = Groth16Verifyingkey {
         nr_pubinputs: 7,
@@ -90,6 +89,10 @@ pub fn process_withdraw(
 
     verifier.verify().map_err(|_| ErrorCode::InvalidProof)?;
     
+    require_eq!(public_inputs.root, merkle_tree.root, ErrorCode::InvalidMerkleProof);
+    
+    nullifier_set.add_nullifier(public_inputs.nullifier_hash)?;
+    
     let recipient_pubkey = reconstruct_solana_pubkey(
         public_inputs.recipient_1,
         public_inputs.recipient_2,
@@ -100,27 +103,6 @@ pub fn process_withdraw(
         ctx.accounts.recipient.key(),
         ErrorCode::InvalidRecipient
     );
-    
-    let cpi_accounts = NullifyLeaves {
-        authority: ctx.accounts.authority.to_account_info(),
-        registered_program_pda: ctx.accounts.registered_program_pda.as_ref().map(|a| a.to_account_info()),
-        log_wrapper: ctx.accounts.log_wrapper.to_account_info(),
-        merkle_tree: ctx.accounts.merkle_tree.to_account_info(),
-        nullifier_queue: ctx.accounts.nullifier_queue.to_account_info(),
-    };
-    
-    let cpi_ctx = CpiContext::new(
-        ctx.accounts.account_compression_program.to_account_info(),
-        cpi_accounts,
-    );
-    
-    account_compression::cpi::nullify_leaves(
-        cpi_ctx,
-        change_log_indices,
-        leaves_queue_indices,
-        leaf_indices,
-        proofs,
-    ).map_err(|_| ErrorCode::LightProtocolError)?;
     
     **tornado_pool.to_account_info().try_borrow_mut_lamports()? -= tornado_pool.deposit_amount;
     **ctx.accounts.recipient.to_account_info().try_borrow_mut_lamports()? += tornado_pool.deposit_amount;

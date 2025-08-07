@@ -1,25 +1,40 @@
 use anchor_lang::prelude::*;
 use crate::state::{TornadoPool, Groth16VerifyingKey};
+use crate::merkle_tree::{MerkleTree, NullifierSet};
 use crate::errors::ErrorCode;
 
 #[derive(Accounts)]
 pub struct Initialize<'info> {
     #[account(mut)]
-    pub authority: Signer<'info>,
+    pub payer: Signer<'info>,
     
     #[account(
         init,
-        payer = authority,
+        payer = payer,
         space = 8 + TornadoPool::LEN,
         seeds = [b"tornado_pool"],
         bump
     )]
     pub tornado_pool: Account<'info, TornadoPool>,
     
-    /// CHECK: Merkle tree account for Light Protocol compression
-    pub merkle_tree: UncheckedAccount<'info>,
-    /// CHECK: Nullifier queue account for Light Protocol compression
-    pub nullifier_queue: UncheckedAccount<'info>,
+    #[account(
+        init,
+        payer = payer,
+        space = 8 + MerkleTree::LEN,
+        seeds = [b"merkle_tree"],
+        bump
+    )]
+    pub merkle_tree: Account<'info, MerkleTree>,
+    
+    #[account(
+        init,
+        payer = payer,
+        space = 8 + NullifierSet::LEN,
+        seeds = [b"nullifier_set"],
+        bump
+    )]
+    pub nullifier_set: Account<'info, NullifierSet>,
+    
     pub system_program: Program<'info, System>,
 }
 
@@ -29,17 +44,19 @@ pub fn process_initialize(
     verification_key: Groth16VerifyingKey,
 ) -> Result<()> {
     let tornado_pool = &mut ctx.accounts.tornado_pool;
+    let merkle_tree = &mut ctx.accounts.merkle_tree;
+    let nullifier_set = &mut ctx.accounts.nullifier_set;
     
-    require!(deposit_amount > 0, ErrorCode::InvalidDepositAmount);
+    require!(deposit_amount > 0, ErrorCode::InsufficientFunds);
     require!(verification_key.ic.len() == 8, ErrorCode::InvalidVerificationKey);
     
-    tornado_pool.authority = ctx.accounts.authority.key();
+    tornado_pool.bump = ctx.bumps.tornado_pool;
     tornado_pool.deposit_amount = deposit_amount;
     tornado_pool.deposit_count = 0;
     tornado_pool.verification_key = verification_key;
-    tornado_pool.merkle_tree = ctx.accounts.merkle_tree.key();
-    tornado_pool.nullifier_queue = ctx.accounts.nullifier_queue.key();
-    tornado_pool.bump = ctx.bumps.tornado_pool;
+    
+    merkle_tree.initialize(ctx.bumps.merkle_tree)?;
+    nullifier_set.initialize(ctx.bumps.nullifier_set)?;
     
     msg!("Tornado pool initialized with deposit amount: {} lamports", deposit_amount);
     
