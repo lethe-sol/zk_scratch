@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use groth16_solana::groth16::Groth16Verifier;
-use crate::{constants::*, errors::TornadoError, state::*};
+use crate::{constants::*, errors::TornadoError, state::*, verifying_key::get_verifying_key};
 
 #[derive(Accounts)]
 pub struct Withdraw<'info> {
@@ -60,7 +60,7 @@ pub fn withdraw(
     let proof_b: [u8; 128] = proof[64..192].try_into().unwrap(); 
     let proof_c: [u8; 64] = proof[192..256].try_into().unwrap();
     
-    let verifying_key = get_verifying_key()?;
+    let verifying_key = get_verifying_key();
     let mut verifier = Groth16Verifier::new(
         &proof_a,
         &proof_b, 
@@ -120,10 +120,4 @@ fn prepare_public_inputs(
     public_inputs[3][0..16].copy_from_slice(&recipient_bytes[16..32]);
     
     Ok(public_inputs)
-}
-
-fn get_verifying_key() -> Result<groth16_solana::groth16::Groth16Verifyingkey<'static>> {
-    
-    
-    Err(TornadoError::InvalidProof.into())
 }
