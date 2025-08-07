@@ -97,7 +97,7 @@ export class ProgramInitializer {
       return tx;
     } catch (error) {
       console.error('Failed to initialize with minimal verification key:', error);
-      throw new Error('Transaction still too large even with minimal verification key. Program may need to be modified to accept verification key in parts.');
+      throw new Error('Transaction still too large even with minimal verification key. The program may need modifications to support larger verification keys or account initialization in separate transactions.');
     }
   }
 
@@ -179,16 +179,20 @@ export class ProgramInitializer {
   }
 
   private createMinimalVerificationKey(): any {
-    const zeroBytes32 = new Array(32).fill(0);
     const zeroBytes64 = new Array(64).fill(0);
     const zeroBytes128 = new Array(128).fill(0);
     
+    const icElements = [];
+    for (let i = 0; i < 8; i++) {
+      icElements.push([...zeroBytes64]);
+    }
+    
     return {
-      alpha: zeroBytes64,
-      beta: zeroBytes128,
-      gamma: zeroBytes128,
-      delta: zeroBytes128,
-      ic: [zeroBytes64] // Minimal IC with just one element instead of 8
+      alpha: [...zeroBytes64],
+      beta: [...zeroBytes128],
+      gamma: [...zeroBytes128],
+      delta: [...zeroBytes128],
+      ic: icElements
     };
   }
 

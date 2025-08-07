@@ -54,8 +54,8 @@ export async function initializeProgram(wallet: AnchorWallet): Promise<string> {
       depositAmount: DEPOSIT_AMOUNT
     });
   } catch (error: any) {
-    if (error.message?.includes('Transaction too large')) {
-      throw new Error('Initialization transaction too large. This may require program modifications to accept verification key in parts.');
+    if (error.message?.includes('Transaction too large') || error.message?.includes('1283 > 1232')) {
+      throw new Error('Initialization transaction too large. This may require program modifications to accept verification key in parts or account initialization in separate transactions.');
     }
     throw error;
   }
