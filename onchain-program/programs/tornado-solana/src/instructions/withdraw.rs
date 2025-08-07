@@ -89,7 +89,8 @@ pub fn process_withdraw(
 
     verifier.verify().map_err(|_| ErrorCode::InvalidProof)?;
     
-    require_eq!(public_inputs.root, merkle_tree.root, ErrorCode::InvalidMerkleProof);
+    require!(merkle_tree.is_valid_root(public_inputs.root), ErrorCode::InvalidMerkleProof);
+    
     
     nullifier_set.add_nullifier(public_inputs.nullifier_hash)?;
     

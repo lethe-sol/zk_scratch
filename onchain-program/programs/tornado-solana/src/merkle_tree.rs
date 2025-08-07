@@ -1,25 +1,27 @@
 use anchor_lang::prelude::*;
-use light_poseidon::{Poseidon, PoseidonHasher};
+use light_poseidon::Poseidon;
 
 pub const TREE_DEPTH: usize = 20;
-pub const TREE_SIZE: usize = (1 << TREE_DEPTH) - 1; // 2^20 - 1 internal nodes
+pub const MAX_STORED_NODES: usize = 1000; // Store only recent nodes, not full tree
 
 #[account]
 pub struct MerkleTree {
     pub bump: u8,
     pub next_index: u32,
     pub root: [u8; 32],
-    pub nodes: [[u8; 32]; TREE_SIZE],
+    pub historical_roots: [[u8; 32]; 100], // Store last 100 roots
+    pub nodes: [[u8; 32]; MAX_STORED_NODES], // Store recent nodes only
 }
 
 impl MerkleTree {
-    pub const LEN: usize = 8 + 1 + 4 + 32 + (32 * TREE_SIZE);
+    pub const LEN: usize = 8 + 1 + 4 + 32 + (32 * 100) + (32 * MAX_STORED_NODES);
 
     pub fn initialize(&mut self, bump: u8) -> Result<()> {
         self.bump = bump;
         self.next_index = 0;
         self.root = [0u8; 32];
-        self.nodes = [[0u8; 32]; TREE_SIZE];
+        self.historical_roots = [[0u8; 32]; 100];
+        self.nodes = [[0u8; 32]; MAX_STORED_NODES];
         Ok(())
     }
 
@@ -32,18 +34,7 @@ impl MerkleTree {
 
         for level in 0..TREE_DEPTH {
             let is_right = (current_index & 1) == 1;
-            let sibling_index = if is_right { current_index - 1 } else { current_index + 1 };
-            
-            let sibling_hash = if sibling_index < (1u32 << (TREE_DEPTH - level)) {
-                if level == 0 {
-                    [0u8; 32] // Empty leaf
-                } else {
-                    let node_index = self.get_node_index(level - 1, sibling_index);
-                    self.nodes[node_index]
-                }
-            } else {
-                [0u8; 32] // Empty sibling
-            };
+            let sibling_hash = self.get_zero_hash(level);
 
             current_hash = if is_right {
                 self.poseidon_hash(&sibling_hash, &current_hash)?
@@ -51,14 +42,12 @@ impl MerkleTree {
                 self.poseidon_hash(&current_hash, &sibling_hash)?
             };
 
-            if level < TREE_DEPTH - 1 {
-                let node_index = self.get_node_index(level, current_index);
-                self.nodes[node_index] = current_hash;
-            }
-
             current_index /= 2;
         }
 
+        let root_index = (self.next_index as usize) % 100;
+        self.historical_roots[root_index] = self.root;
+        
         self.root = current_hash;
         self.next_index += 1;
         
@@ -94,14 +83,28 @@ impl MerkleTree {
         Ok(current_hash == self.root)
     }
 
-    fn get_node_index(&self, level: usize, index: u32) -> usize {
-        let level_offset = (1usize << level) - 1;
-        level_offset + (index as usize)
+    fn get_zero_hash(&self, level: usize) -> [u8; 32] {
+        [0u8; 32]
+    }
+
+    pub fn is_valid_root(&self, root: [u8; 32]) -> bool {
+        if root == self.root {
+            return true;
+        }
+        
+        for historical_root in &self.historical_roots {
+            if *historical_root == root {
+                return true;
+            }
+        }
+        
+        false
     }
 
     fn poseidon_hash(&self, left: &[u8; 32], right: &[u8; 32]) -> Result<[u8; 32]> {
         let mut hasher = Poseidon::new();
-        hasher.hash(&[*left, *right]).map_err(|_| crate::errors::ErrorCode::HashingError.into())
+        hasher.hash(&[*left, *right])
+            .map_err(|_| crate::errors::ErrorCode::HashingError)
     }
 }
 
@@ -112,7 +115,7 @@ pub struct NullifierSet {
 }
 
 impl NullifierSet {
-    pub const LEN: usize = 8 + 1 + 4 + (32 * 1000); // Support up to 1000 nullifiers initially
+    pub const LEN: usize = 8 + 1 + 4 + (32 * 100); // Support up to 100 nullifiers initially
 
     pub fn initialize(&mut self, bump: u8) -> Result<()> {
         self.bump = bump;
