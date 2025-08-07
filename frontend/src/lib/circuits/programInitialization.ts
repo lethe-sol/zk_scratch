@@ -100,31 +100,36 @@ export class ProgramInitializer {
     const vk = verificationKey;
     
     return {
-      alpha: this.hexToBytes(vk.vk_alpha_1[0] + vk.vk_alpha_1[1], 64),
-      beta: this.hexToBytes(
-        vk.vk_beta_2[0][1] + vk.vk_beta_2[0][0] + vk.vk_beta_2[1][1] + vk.vk_beta_2[1][0], 
-        128
-      ),
-      gamma: this.hexToBytes(
-        vk.vk_gamma_2[0][1] + vk.vk_gamma_2[0][0] + vk.vk_gamma_2[1][1] + vk.vk_gamma_2[1][0], 
-        128
-      ),
-      delta: this.hexToBytes(
-        vk.vk_delta_2[0][1] + vk.vk_delta_2[0][0] + vk.vk_delta_2[1][1] + vk.vk_delta_2[1][0], 
-        128
-      ),
-      ic: vk.IC.map(ic => this.hexToBytes(ic[0] + ic[1], 64))
+      alpha: this.bigIntPairToBytes(vk.vk_alpha_1[0], vk.vk_alpha_1[1]),
+      beta: this.g2PointToBytes(vk.vk_beta_2),
+      gamma: this.g2PointToBytes(vk.vk_gamma_2),
+      delta: this.g2PointToBytes(vk.vk_delta_2),
+      ic: vk.IC.map(ic => this.bigIntPairToBytes(ic[0], ic[1]))
     };
   }
 
-  private hexToBytes(hex: string, expectedLength: number): number[] {
-    const cleanHex = hex.replace('0x', '');
-    const padded = cleanHex.padStart(expectedLength * 2, '0');
+  private bigIntToBytes32(value: string): number[] {
+    const bigInt = BigInt(value);
+    const hex = bigInt.toString(16).padStart(64, '0');
     const bytes: number[] = [];
-    for (let i = 0; i < padded.length; i += 2) {
-      bytes.push(parseInt(padded.substr(i, 2), 16));
+    for (let i = 0; i < hex.length; i += 2) {
+      bytes.push(parseInt(hex.substr(i, 2), 16));
     }
     return bytes;
+  }
+
+  private bigIntPairToBytes(x: string, y: string): number[] {
+    const xBytes = this.bigIntToBytes32(x);
+    const yBytes = this.bigIntToBytes32(y);
+    return [...xBytes, ...yBytes];
+  }
+
+  private g2PointToBytes(point: string[][]): number[] {
+    const x1Bytes = this.bigIntToBytes32(point[0][0]);
+    const x2Bytes = this.bigIntToBytes32(point[0][1]);
+    const y1Bytes = this.bigIntToBytes32(point[1][0]);
+    const y2Bytes = this.bigIntToBytes32(point[1][1]);
+    return [...x1Bytes, ...x2Bytes, ...y1Bytes, ...y2Bytes];
   }
 
   getProgram(): Program {
