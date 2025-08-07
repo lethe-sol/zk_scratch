@@ -146,7 +146,18 @@ export default function MixerPage() {
       
     } catch (error) {
       console.error('Initialization error:', error);
-      toast.error(`Failed to initialize: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      
+      if (error instanceof Error) {
+        if (error.message.includes('Transaction too large')) {
+          toast.error('Transaction too large. The verification key needs to be split into smaller parts. Please contact the developers.');
+        } else if (error.message.includes('already initialized')) {
+          toast.info('Program is already initialized and ready to use!');
+        } else {
+          toast.error(`Failed to initialize: ${error.message}`);
+        }
+      } else {
+        toast.error('Failed to initialize: Unknown error');
+      }
     } finally {
       setIsInitializing(false);
     }

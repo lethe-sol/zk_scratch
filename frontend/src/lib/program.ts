@@ -49,9 +49,16 @@ export async function initializeProgram(wallet: AnchorWallet): Promise<string> {
     throw new Error('Program is already initialized');
   }
   
-  return await initializer.initializeProgram({
-    depositAmount: DEPOSIT_AMOUNT
-  });
+  try {
+    return await initializer.initializeProgram({
+      depositAmount: DEPOSIT_AMOUNT
+    });
+  } catch (error: any) {
+    if (error.message?.includes('Transaction too large')) {
+      throw new Error('Initialization transaction too large. This may require program modifications to accept verification key in parts.');
+    }
+    throw error;
+  }
 }
 
 export async function deposit(wallet: AnchorWallet): Promise<{ tx: string; note: TornadoNote }> {
