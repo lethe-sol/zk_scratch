@@ -20,3 +20,7 @@ anchor-lang = "0.31.1"
 anchor-spl = "0.31.1"
 spl-account-compression = "0.3.0"
 groth16-solana = { git = "https://github.com/Lightprotocol/groth16-solana.git" }
+
+[patch.crates-io]
+ark-ff = { version = "0.4.2", default-features = false, features = [] }
+
