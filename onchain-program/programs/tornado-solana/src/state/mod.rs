@@ -15,9 +15,9 @@ impl TornadoPool {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct Groth16VerifyingKey {
     pub alpha: [u8; 64],
-    pub beta: [u8; 128],
-    pub gamma: [u8; 128],
-    pub delta: [u8; 128],
+    pub beta: Box<[u8; 128]>,
+    pub gamma: Box<[u8; 128]>,
+    pub delta: Box<[u8; 128]>,
     pub ic: Vec<[u8; 64]>,
 }
 

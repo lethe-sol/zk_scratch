@@ -63,9 +63,9 @@ pub fn process_withdraw(
     let light_vk = Groth16Verifyingkey {
         nr_pubinputs: 7,
         vk_alpha_g1: tornado_pool.verification_key.alpha,
-        vk_beta_g2: tornado_pool.verification_key.beta,
-        vk_gamme_g2: tornado_pool.verification_key.gamma,
-        vk_delta_g2: tornado_pool.verification_key.delta,
+        vk_beta_g2: *tornado_pool.verification_key.beta,
+        vk_gamme_g2: *tornado_pool.verification_key.gamma,
+        vk_delta_g2: *tornado_pool.verification_key.delta,
         vk_ic: &tornado_pool.verification_key.ic,
     };
 

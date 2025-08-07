@@ -2,15 +2,15 @@ use anchor_lang::prelude::*;
 use light_poseidon::{Poseidon, PoseidonBytesHasher};
 
 pub const TREE_DEPTH: usize = 20;
-pub const MAX_STORED_NODES: usize = 1000; // Store only recent nodes, not full tree
+pub const MAX_STORED_NODES: usize = 100; // Store only recent nodes, not full tree
 
 #[account]
 pub struct MerkleTree {
     pub bump: u8,
     pub next_index: u32,
     pub root: [u8; 32],
-    pub historical_roots: [[u8; 32]; 100], // Store last 100 roots
-    pub nodes: [[u8; 32]; MAX_STORED_NODES], // Store recent nodes only
+    pub historical_roots: Box<[[u8; 32]; 100]>, // Store last 100 roots on heap
+    pub nodes: Box<[[u8; 32]; MAX_STORED_NODES]>, // Store recent nodes only on heap
 }
 
 impl MerkleTree {
@@ -20,8 +20,8 @@ impl MerkleTree {
         self.bump = bump;
         self.next_index = 0;
         self.root = [0u8; 32];
-        self.historical_roots = [[0u8; 32]; 100];
-        self.nodes = [[0u8; 32]; MAX_STORED_NODES];
+        self.historical_roots = Box::new([[0u8; 32]; 100]);
+        self.nodes = Box::new([[0u8; 32]; MAX_STORED_NODES]);
         Ok(())
     }
 
@@ -92,7 +92,7 @@ impl MerkleTree {
             return true;
         }
         
-        for historical_root in &self.historical_roots {
+        for historical_root in self.historical_roots.iter() {
             if *historical_root == root {
                 return true;
             }
