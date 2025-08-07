@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use light_poseidon::Poseidon;
+use light_poseidon::{Poseidon, PoseidonHasher};
 
 pub const TREE_DEPTH: usize = 20;
 pub const MAX_STORED_NODES: usize = 1000; // Store only recent nodes, not full tree
@@ -102,7 +102,8 @@ impl MerkleTree {
     }
 
     fn poseidon_hash(&self, left: &[u8; 32], right: &[u8; 32]) -> Result<[u8; 32]> {
-        let mut hasher = Poseidon::new();
+        let params = light_poseidon::parameters::bn254_x5();
+        let mut hasher = Poseidon::new(&params);
         hasher.hash(&[*left, *right])
             .map_err(|_| crate::errors::ErrorCode::HashingError)
     }
