@@ -20,8 +20,8 @@ export function ClientProviders({
 }) {
   const [queryClient] = useState(() => new QueryClient());
   
-  const network = WalletAdapterNetwork.Mainnet;
-  const endpoint = useMemo(() => process.env.NEXT_PUBLIC_RPC_URL || clusterApiUrl(network), [network]);
+  const network = WalletAdapterNetwork.Devnet;
+  const endpoint = 'https://devnet.helius-rpc.com/?api-key=3644b864-4ac3-4d9d-b417-c96315f4b67d';
   
   const wallets = useMemo(
     () => [

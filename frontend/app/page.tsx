@@ -34,7 +34,6 @@ export default function MixerPage() {
   const [noteBalance, setNoteBalance] = useState("0.0000");
   const [isInitializing, setIsInitializing] = useState(false);
 
-  const RPC_URL = "https://api.devnet.solana.com";
   const TORNADO_PROGRAM_ID = "wFafLjoy9oEs8jqWC65kDMB4MdpBCoT5imbqsddqFJJ";
 
   const handleNoteChange = useCallback(async (value: string) => {
