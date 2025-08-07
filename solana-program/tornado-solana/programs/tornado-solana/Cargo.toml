@@ -20,4 +20,3 @@ anchor-lang = "0.31.1"
 anchor-spl = "0.31.1"
 spl-account-compression = "0.3.0"
 groth16-solana = { git = "https://github.com/Lightprotocol/groth16-solana.git" }
-solana-program = "1.18.0"
