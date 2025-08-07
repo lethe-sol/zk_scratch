@@ -22,6 +22,29 @@ pub mod tornado_solana {
         instructions::initialize::process_initialize(ctx, deposit_amount, verification_key)
     }
 
+    pub fn initialize_pool(
+        ctx: Context<InitializePool>,
+        deposit_amount: u64,
+        verification_key_account: Pubkey,
+    ) -> Result<()> {
+        instructions::initialize_pool::process_initialize_pool(ctx, deposit_amount, verification_key_account)
+    }
+
+    pub fn initialize_verification_key(
+        ctx: Context<InitializeVerificationKey>,
+        verification_key: Groth16VerifyingKey,
+    ) -> Result<()> {
+        instructions::initialize_verification_key::process_initialize_verification_key(ctx, verification_key)
+    }
+
+    pub fn initialize_merkle_tree(ctx: Context<InitializeMerkleTree>) -> Result<()> {
+        instructions::initialize_merkle_tree::process_initialize_merkle_tree(ctx)
+    }
+
+    pub fn initialize_nullifier_set(ctx: Context<InitializeNullifierSet>) -> Result<()> {
+        instructions::initialize_nullifier_set::process_initialize_nullifier_set(ctx)
+    }
+
     pub fn deposit(
         ctx: Context<Deposit>,
         commitment: [u8; 32],

@@ -134,6 +134,11 @@ export async function withdraw(
     currentRoot.toString()
   );
   
+  const [verificationKeyPda] = PublicKey.findProgramAddressSync(
+    [Buffer.from('verification_key')],
+    program.programId
+  );
+
   const tx = await program.methods
     .withdraw(
       Array.from(proof.proof_a),
@@ -146,6 +151,7 @@ export async function withdraw(
     .accounts({
       withdrawer: wallet.publicKey,
       recipient: recipient,
+      verificationKeyAccount: verificationKeyPda,
     })
     .rpc();
     

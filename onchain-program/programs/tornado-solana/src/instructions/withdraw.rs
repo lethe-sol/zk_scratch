@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use groth16_solana::groth16::{Groth16Verifier, Groth16Verifyingkey};
-use crate::state::TornadoPool;
+use crate::state::{TornadoPool, VerificationKeyAccount};
 use crate::merkle_tree::{MerkleTree, NullifierSet};
 use crate::errors::ErrorCode;
 
@@ -15,6 +15,12 @@ pub struct Withdraw<'info> {
         bump = tornado_pool.bump,
     )]
     pub tornado_pool: Account<'info, TornadoPool>,
+    
+    #[account(
+        seeds = [b"verification_key"],
+        bump = verification_key_account.bump,
+    )]
+    pub verification_key_account: Account<'info, VerificationKeyAccount>,
     
     #[account(
         seeds = [b"merkle_tree"],
@@ -62,11 +68,11 @@ pub fn process_withdraw(
     
     let light_vk = Groth16Verifyingkey {
         nr_pubinputs: 7,
-        vk_alpha_g1: tornado_pool.verification_key.alpha,
-        vk_beta_g2: tornado_pool.verification_key.beta,
-        vk_gamme_g2: tornado_pool.verification_key.gamma,
-        vk_delta_g2: tornado_pool.verification_key.delta,
-        vk_ic: &tornado_pool.verification_key.ic,
+        vk_alpha_g1: ctx.accounts.verification_key_account.verification_key.alpha,
+        vk_beta_g2: ctx.accounts.verification_key_account.verification_key.beta,
+        vk_gamme_g2: ctx.accounts.verification_key_account.verification_key.gamma,
+        vk_delta_g2: ctx.accounts.verification_key_account.verification_key.delta,
+        vk_ic: &ctx.accounts.verification_key_account.verification_key.ic,
     };
 
     let public_inputs_array: [[u8; 32]; 7] = [

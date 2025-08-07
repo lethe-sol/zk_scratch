@@ -9,19 +9,17 @@ pub struct MerkleTree {
     pub bump: u8,
     pub next_index: u32,
     pub root: [u8; 32],
-    pub historical_roots: [[u8; 32]; 100], // Store last 100 roots
-    pub nodes: [[u8; 32]; MAX_STORED_NODES], // Store recent nodes only
+    pub recent_roots: [[u8; 32]; 20], // Store only last 20 roots
 }
 
 impl MerkleTree {
-    pub const LEN: usize = 8 + 1 + 4 + 32 + (32 * 100) + (32 * MAX_STORED_NODES);
+    pub const LEN: usize = 8 + 1 + 4 + 32 + (32 * 20);
 
     pub fn initialize(&mut self, bump: u8) -> Result<()> {
         self.bump = bump;
         self.next_index = 0;
         self.root = [0u8; 32];
-        self.historical_roots = [[0u8; 32]; 100];
-        self.nodes = [[0u8; 32]; MAX_STORED_NODES];
+        self.recent_roots = [[0u8; 32]; 20];
         Ok(())
     }
 
@@ -45,8 +43,8 @@ impl MerkleTree {
             current_index /= 2;
         }
 
-        let root_index = (self.next_index as usize) % 100;
-        self.historical_roots[root_index] = self.root;
+        let root_index = (self.next_index as usize) % 20;
+        self.recent_roots[root_index] = self.root;
         
         self.root = current_hash;
         self.next_index += 1;
@@ -92,7 +90,7 @@ impl MerkleTree {
             return true;
         }
         
-        for historical_root in &self.historical_roots {
+        for historical_root in &self.recent_roots {
             if *historical_root == root {
                 return true;
             }

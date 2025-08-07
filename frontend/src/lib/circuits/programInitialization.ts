@@ -21,12 +21,27 @@ export class ProgramInitializer {
     const formattedVerificationKey = this.formatVerificationKey();
     
     try {
-      return await this.initializeSingleTransaction(params, formattedVerificationKey);
+      console.log('Starting multi-step initialization...');
+      
+      const vkTx = await this.initializeVerificationKey(formattedVerificationKey);
+      console.log('Verification key account created:', vkTx);
+      
+      const [verificationKeyPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('verification_key')],
+        this.program.programId
+      );
+      const poolTx = await this.initializePool(params.depositAmount, verificationKeyPda);
+      console.log('Pool account created:', poolTx);
+      
+      const treeTx = await this.initializeMerkleTree();
+      console.log('Merkle tree account created:', treeTx);
+      
+      const nullifierTx = await this.initializeNullifierSet();
+      console.log('Nullifier set account created:', nullifierTx);
+      
+      return `Multi-step initialization completed. Final tx: ${nullifierTx}`;
     } catch (error: any) {
-      if (error.message?.includes('Transaction too large') || error.message?.includes('1283 > 1232')) {
-        console.log('Single transaction too large, attempting multi-step initialization...');
-        return await this.initializeMultiStep(params, formattedVerificationKey);
-      }
+      console.error('Multi-step initialization failed:', error);
       throw error;
     }
   }
@@ -62,43 +77,68 @@ export class ProgramInitializer {
     return tx;
   }
 
-  private async initializeMultiStep(params: InitializationParams, verificationKey: any): Promise<string> {
-    
-    const minimalVerificationKey = this.createMinimalVerificationKey();
-    
+  private async initializeVerificationKey(verificationKey: any): Promise<string> {
+    const [verificationKeyPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from('verification_key')],
+      this.program.programId
+    );
+
+    return await this.program.methods
+      .initializeVerificationKey(verificationKey)
+      .accounts({
+        payer: this.provider.wallet.publicKey,
+        verificationKeyAccount: verificationKeyPda,
+        systemProgram: SystemProgram.programId,
+      })
+      .rpc();
+  }
+
+  private async initializePool(depositAmount: number, verificationKeyAccount: PublicKey): Promise<string> {
     const [tornadoPoolPda] = PublicKey.findProgramAddressSync(
       [Buffer.from('tornado_pool')],
       this.program.programId
     );
 
+    return await this.program.methods
+      .initializePool(new BN(depositAmount), verificationKeyAccount)
+      .accounts({
+        payer: this.provider.wallet.publicKey,
+        tornadoPool: tornadoPoolPda,
+        systemProgram: SystemProgram.programId,
+      })
+      .rpc();
+  }
+
+  private async initializeMerkleTree(): Promise<string> {
     const [merkleTreePda] = PublicKey.findProgramAddressSync(
       [Buffer.from('merkle_tree')],
       this.program.programId
     );
 
+    return await this.program.methods
+      .initializeMerkleTree()
+      .accounts({
+        payer: this.provider.wallet.publicKey,
+        merkleTree: merkleTreePda,
+        systemProgram: SystemProgram.programId,
+      })
+      .rpc();
+  }
+
+  private async initializeNullifierSet(): Promise<string> {
     const [nullifierSetPda] = PublicKey.findProgramAddressSync(
       [Buffer.from('nullifier_set')],
       this.program.programId
     );
 
-    try {
-      const tx = await this.program.methods
-        .initialize(new BN(params.depositAmount), minimalVerificationKey)
-        .accounts({
-          payer: this.provider.wallet.publicKey,
-          tornadoPool: tornadoPoolPda,
-          merkleTree: merkleTreePda,
-          nullifierSet: nullifierSetPda,
-          systemProgram: SystemProgram.programId,
-        })
-        .rpc();
-
-      console.log('Program initialized with minimal verification key:', tx);
-      return tx;
-    } catch (error) {
-      console.error('Failed to initialize with minimal verification key:', error);
-      throw new Error('Transaction still too large even with minimal verification key. The program may need modifications to support larger verification keys or account initialization in separate transactions.');
-    }
+    return await this.program.methods
+      .initializeNullifierSet()
+      .accounts({
+        payer: this.provider.wallet.publicKey,
+        nullifierSet: nullifierSetPda,
+        systemProgram: SystemProgram.programId,
+      })
+      .rpc();
   }
 
   async checkIfInitialized(): Promise<boolean> {
