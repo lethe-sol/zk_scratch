@@ -32,6 +32,7 @@ export default function MixerPage() {
   const [showNotePopup, setShowNotePopup] = useState(false);
   const [generatedNote, setGeneratedNote] = useState("");
   const [noteBalance, setNoteBalance] = useState("0.0000");
+  const [isInitializing, setIsInitializing] = useState(false);
 
   const RPC_URL = "https://api.devnet.solana.com";
   const TORNADO_PROGRAM_ID = "wFafLjoy9oEs8jqWC65kDMB4MdpBCoT5imbqsddqFJJ";
@@ -60,27 +61,20 @@ export default function MixerPage() {
     setIsShielding(true);
 
     try {
-      const { getProgram, DUMMY_COMMITMENT, DEPOSIT_AMOUNT } = await import('@/lib/program');
-      const program = getProgram({ publicKey, signTransaction: sendTransaction, signAllTransactions: sendTransaction } as any);
+      const { deposit } = await import('@/lib/program');
+      const { NoteManager } = await import('@/lib/circuits/noteManager');
       
-      const [tornadoPool] = PublicKey.findProgramAddressSync(
-        [Buffer.from("tornado_pool")],
-        program.programId
-      );
+      toast.info("Generating commitment and initiating deposit...");
+
+      const { tx, note } = await deposit({ publicKey, signTransaction: sendTransaction, signAllTransactions: sendTransaction } as any);
+      const noteString = NoteManager.formatNoteString(note);
       
-      toast.info("Initiating deposit transaction...");
-
-      const tx = await program.methods
-        .deposit(DUMMY_COMMITMENT)
-        .accounts({
-          tornadoPool,
-          user: publicKey,
-          systemProgram: SystemProgram.programId,
-        })
-        .rpc();
-
+      setGeneratedNote(noteString);
+      setShowNotePopup(true);
+      
       toast.success(`Deposit successful! Transaction: ${tx}`);
       console.log("Deposit transaction:", tx);
+      console.log("Generated note:", noteString);
       
     } catch (error) {
       console.error('Deposit error:', error);
@@ -104,42 +98,15 @@ export default function MixerPage() {
     setIsShielding(true);
 
     try {
-      const { 
-        getProgram, 
-        DUMMY_PROOF, 
-        DUMMY_MERKLE_PROOF, 
-        DUMMY_PATH_INDICES,
-        DUMMY_RECIPIENT,
-        DUMMY_RELAYER,
-        DUMMY_FEE 
-      } = await import('@/lib/program');
-      const program = getProgram({ publicKey, signTransaction: sendTransaction, signAllTransactions: sendTransaction } as any);
+      const { withdraw } = await import('@/lib/program');
       
-      const [tornadoPool] = PublicKey.findProgramAddressSync(
-        [Buffer.from("tornado_pool")],
-        program.programId
-      );
-      
-      toast.info("Initiating withdrawal with dummy proof...");
+      toast.info("Generating ZK proof and initiating withdrawal...");
 
-      const tx = await program.methods
-        .withdraw(
-          DUMMY_PROOF.pi_a,
-          DUMMY_PROOF.pi_b,
-          DUMMY_PROOF.pi_c,
-          DUMMY_MERKLE_PROOF,
-          DUMMY_PATH_INDICES,
-          new PublicKey(recipientAddress),
-          DUMMY_RELAYER,
-          DUMMY_FEE
-        )
-        .accounts({
-          tornadoPool,
-          recipient: new PublicKey(recipientAddress),
-          relayer: DUMMY_RELAYER,
-          systemProgram: SystemProgram.programId,
-        })
-        .rpc();
+      const tx = await withdraw(
+        { publicKey, signTransaction: sendTransaction, signAllTransactions: sendTransaction } as any,
+        note,
+        new PublicKey(recipientAddress)
+      );
 
       toast.success(`Withdrawal successful! Transaction: ${tx}`);
       console.log("Withdrawal transaction:", tx);
@@ -157,6 +124,32 @@ export default function MixerPage() {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success('Copied to clipboard!');
+  };
+
+  const handleInitialize = async () => {
+    if (!connected || !publicKey) {
+      toast.error('Please connect your wallet');
+      return;
+    }
+
+    setIsInitializing(true);
+
+    try {
+      const { initializeProgram } = await import('@/lib/program');
+      
+      toast.info("Initializing Tornado program...");
+
+      const tx = await initializeProgram({ publicKey, signTransaction: sendTransaction, signAllTransactions: sendTransaction } as any);
+      
+      toast.success(`Program initialized! Transaction: ${tx}`);
+      console.log("Initialization transaction:", tx);
+      
+    } catch (error) {
+      console.error('Initialization error:', error);
+      toast.error(`Failed to initialize: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsInitializing(false);
+    }
   };
 
   const downloadNote = () => {
@@ -263,6 +256,15 @@ export default function MixerPage() {
 
                 <TabsContent value="deposit" className="space-y-6 mt-6">
                   <div className="space-y-4">
+                    <Button 
+                      variant="outline" 
+                      className="w-full py-4 text-sm border-cyber-glow/30 text-cyber-glow hover:bg-cyber-glow/10"
+                      onClick={handleInitialize}
+                      disabled={isInitializing || isShielding}
+                    >
+                      {isInitializing ? 'INITIALIZING...' : 'INITIALIZE PROGRAM'}
+                    </Button>
+                    
                     <div className="flex justify-between items-center">
                       <Label className="text-cyber-glow font-mono text-sm">AMOUNT (SOL)</Label>
                       <span className="text-cyber-glow font-mono text-lg font-bold">
@@ -291,7 +293,7 @@ export default function MixerPage() {
                       variant="cyber" 
                       className="w-full py-6 text-lg"
                       onClick={handleDeposit}
-                      disabled={isShielding}
+                      disabled={isShielding || isInitializing}
                     >
                       {isShielding ? 'PROCESSING...' : 'INITIATE DEPOSIT'}
                     </Button>
