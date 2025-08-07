@@ -6,6 +6,8 @@ members = [
 ]
 [workspace.dependencies]
 anchor-lang = "0.29.0"
+anchor-spl = "0.29.0"
+spl-account-compression = "0.3.0"
 
 
 [profile.release]
