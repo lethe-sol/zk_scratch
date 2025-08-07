@@ -16,9 +16,7 @@ cpi = ["no-entrypoint"]
 default = []
 
 [dependencies]
-anchor-lang = "0.31.1"
-anchor-spl = "0.31.1"
-spl-account-compression = "0.3.0"
-groth16-solana = { git = "https://github.com/Lightprotocol/groth16-solana.git" }
-
-
+anchor-lang = "0.29.0"
+anchor-spl = "0.29.0"
+spl-account-compression = "0.2.0"
+groth16-solana = { git = "https://github.com/Lightprotocol/groth16-solana.git", branch = "anchor-0.29" }
