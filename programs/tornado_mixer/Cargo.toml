@@ -20,7 +20,7 @@ idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
 anchor-lang = "0.31.1"
 anchor-spl = "0.31.1"
 groth16-solana = { git = "https://github.com/Lightprotocol/groth16-solana.git" }
-spl-account-compression = { version = "0.3.0", features = ["cpi"] }
+spl-account-compression = { version = "0.31.1", features = ["cpi"] }
 spl-concurrent-merkle-tree = "0.2.0"
 bytemuck = "1.14"
 
