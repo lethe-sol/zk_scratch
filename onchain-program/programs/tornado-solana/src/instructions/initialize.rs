@@ -53,7 +53,7 @@ pub fn process_initialize(
     tornado_pool.bump = ctx.bumps.tornado_pool;
     tornado_pool.deposit_amount = deposit_amount;
     tornado_pool.deposit_count = 0;
-    let [verification_key_pda, _] = Pubkey::find_program_address(
+    let (verification_key_pda, _) = Pubkey::find_program_address(
         &[b"verification_key"],
         ctx.program_id,
     );
