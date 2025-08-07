@@ -58,9 +58,9 @@ export async function deposit(wallet: AnchorWallet): Promise<{ tx: string; note:
   const program = getProgram(wallet);
   const merkleTree = getMerkleTreeClient();
   
-  const note = NoteManager.generateNote(DEPOSIT_AMOUNT);
+  const note = await NoteManager.generateNote(DEPOSIT_AMOUNT);
   
-  const commitment = generateCommitment(note.nullifier, note.secret);
+  const commitment = await generateCommitment(note.nullifier, note.secret);
   const commitmentBytes = Array.from(bigIntToBytes32(commitment));
   
   const [tornadoPoolPda] = PublicKey.findProgramAddressSync(
@@ -71,7 +71,7 @@ export async function deposit(wallet: AnchorWallet): Promise<{ tx: string; note:
   const poolInfo = await program.account['tornadoPool'].fetch(tornadoPoolPda);
   const leafIndex = poolInfo.depositCount.toNumber();
   
-  merkleTree.insertLeaf(leafIndex, commitment);
+  await merkleTree.insertLeaf(leafIndex, commitment);
   
   const tx = await program.methods
     .deposit(commitmentBytes)
@@ -94,12 +94,12 @@ export async function withdraw(
   const merkleTree = getMerkleTreeClient();
   const proofGen = getProofGenerator();
   
-  const note = NoteManager.parseNoteString(noteString);
+  const note = await NoteManager.parseNoteString(noteString);
   if (!note) {
     throw new Error('Invalid note format');
   }
   
-  if (!NoteManager.validateNote(note)) {
+  if (!(await NoteManager.validateNote(note))) {
     throw new Error('Invalid note - commitment mismatch');
   }
   
@@ -112,9 +112,9 @@ export async function withdraw(
   const currentRoot = treeInfo.root;
   
   const leafIndex = 0;
-  const commitment = generateCommitment(note.nullifier, note.secret);
+  const commitment = await generateCommitment(note.nullifier, note.secret);
   
-  merkleTree.insertLeaf(leafIndex, commitment);
+  await merkleTree.insertLeaf(leafIndex, commitment);
   const merkleProof = merkleTree.generateMerkleProof(leafIndex);
   
   const { proof, publicInputs } = await proofGen.generateWithdrawProof(
