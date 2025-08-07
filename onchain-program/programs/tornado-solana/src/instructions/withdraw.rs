@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use groth16_solana::groth16::{Groth16Verifier, Groth16Proof};
-use light_compressed_account::{
-    program::LightCompressedAccount,
+use account_compression::{
+    program::AccountCompression,
     RegisteredProgram,
 };
 
@@ -31,7 +31,7 @@ pub struct Withdraw<'info> {
     #[account(mut)]
     pub nullifier_queue: AccountInfo<'info>,
     
-    pub account_compression_program: Program<'info, LightCompressedAccount>,
+    pub account_compression_program: Program<'info, AccountCompression>,
     pub system_program: Program<'info, System>,
 }
 
@@ -95,7 +95,7 @@ pub fn process_withdraw(
         ErrorCode::InvalidRecipient
     );
     
-    let cpi_accounts = light_compressed_account::cpi::accounts::NullifyLeaves {
+    let cpi_accounts = account_compression::cpi::accounts::NullifyLeaves {
         authority: ctx.accounts.authority.to_account_info(),
         registered_program_pda: ctx.accounts.registered_program_pda.as_ref().map(|a| a.to_account_info()),
         log_wrapper: ctx.accounts.log_wrapper.to_account_info(),
@@ -108,7 +108,7 @@ pub fn process_withdraw(
         cpi_accounts,
     );
     
-    light_compressed_account::cpi::nullify_leaves(
+    account_compression::cpi::nullify_leaves(
         cpi_ctx,
         change_log_indices,
         leaves_queue_indices,
@@ -139,6 +139,7 @@ fn reconstruct_solana_pubkey(
     full_key[16..].copy_from_slice(&part2[..16]);
     Ok(Pubkey::new_from_array(full_key))
 }
+
 
 #[event]
 pub struct WithdrawEvent {
