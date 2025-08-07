@@ -11,7 +11,7 @@ import { ProgramInitializer } from './circuits/programInitialization';
 import { generateCommitment, bigIntToBytes32 } from './circuits/poseidon';
 
 export const PROGRAM_ID = new PublicKey('wFafLjoy9oEs8jqWC65kDMB4MdpBCoT5imbqsddqFJJ');
-export const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL || 'https://api.devnet.solana.com';
+export const RPC_URL = 'https://devnet.helius-rpc.com/?api-key=3644b864-4ac3-4d9d-b417-c96315f4b67d';
 export let DUMMY_MODE = false;
 
 export function getProgram(wallet: AnchorWallet) {
