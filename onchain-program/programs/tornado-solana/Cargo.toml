@@ -18,6 +18,7 @@ default = []
 [dependencies]
 anchor-lang = "0.29.0"
 anchor-spl = "0.29.0"
-account-compression = { git = "https://github.com/Lightprotocol/light-protocol", features = ["cpi"] }
+solana-program = "=1.18.11"
+account-compression = { git = "https://github.com/Lightprotocol/light-protocol", branch = "main", features = ["cpi"] }
 groth16-solana = { git = "https://github.com/Lightprotocol/groth16-solana" }
 light-poseidon = { git = "https://github.com/Lightprotocol/light-poseidon" }

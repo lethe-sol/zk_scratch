@@ -30,7 +30,7 @@ pub mod tornado_solana {
 
     pub fn withdraw(
         ctx: Context<Withdraw>,
-        proof: groth16_solana::groth16::Groth16Proof,
+        proof: [u8; 256],
         public_inputs: WithdrawPublicInputs,
         change_log_indices: Vec<u64>,
         leaves_queue_indices: Vec<u16>,

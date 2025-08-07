@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use groth16_solana::groth16::{Groth16Verifier, Groth16Proof};
+use groth16_solana::groth16::Groth16Verifier;
 use account_compression::{
     program::AccountCompression,
     RegisteredProgram,
@@ -47,7 +47,7 @@ pub struct WithdrawPublicInputs {
 
 pub fn process_withdraw(
     ctx: Context<Withdraw>,
-    proof: Groth16Proof,
+    proof: [u8; 256],
     public_inputs: WithdrawPublicInputs,
     change_log_indices: Vec<u64>,
     leaves_queue_indices: Vec<u16>,
@@ -73,12 +73,7 @@ pub fn process_withdraw(
     public_inputs_fields.push(bytes_to_field(&public_inputs.relayer_2));
     public_inputs_fields.push(bytes_to_field(&public_inputs.fee));
     
-    let is_valid = verifier.verify_proof(
-        &proof.pi_a,
-        &proof.pi_b,
-        &proof.pi_c,
-        &public_inputs_fields,
-    )?;
+    let is_valid = verifier.verify_proof(&proof, &public_inputs_fields)?;
     
     require!(is_valid, ErrorCode::InvalidProof);
     
