@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 use groth16_solana::groth16::Groth16Verifier;
 use account_compression::{
     program::AccountCompression,
+    cpi::accounts::NullifyLeaves,
     RegisteredProgram,
 };
 use crate::state::TornadoPool;
@@ -88,7 +89,7 @@ pub fn process_withdraw(
         ErrorCode::InvalidRecipient
     );
     
-    let cpi_accounts = account_compression::cpi::accounts::NullifyLeaves {
+    let cpi_accounts = NullifyLeaves {
         authority: ctx.accounts.authority.to_account_info(),
         registered_program_pda: ctx.accounts.registered_program_pda.as_ref().map(|a| a.to_account_info()),
         log_wrapper: ctx.accounts.log_wrapper.to_account_info(),
