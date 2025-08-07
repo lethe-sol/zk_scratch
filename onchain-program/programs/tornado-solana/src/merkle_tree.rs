@@ -105,8 +105,8 @@ impl MerkleTree {
         use ark_bn254::Fr;
         let mut hasher = Poseidon::<Fr>::new_circom(2)
             .map_err(|_| crate::errors::ErrorCode::HashingError)?;
-        hasher.hash_bytes_be(&[left, right])
-            .map_err(|_| crate::errors::ErrorCode::HashingError)
+        Ok(hasher.hash_bytes_be(&[left, right])
+            .map_err(|_| crate::errors::ErrorCode::HashingError)?)
     }
 }
 
