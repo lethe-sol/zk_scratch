@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use light_groth16_verifier::{
+use groth16_solana::{
     groth16::{Groth16Verifier, ProofPoints, Groth16Verifyingkey},
 };
 use crate::state::*;
