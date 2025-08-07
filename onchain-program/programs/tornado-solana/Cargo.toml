@@ -19,6 +19,6 @@ default = []
 anchor-lang = "0.29.0"
 anchor-spl = "0.29.0"
 light-batched-merkle-tree = { git = "https://github.com/Lightprotocol/light-protocol" }
-light-account-compression = { git = "https://github.com/Lightprotocol/light-protocol", features = ["cpi"] }
+light-compressed-account = { git = "https://github.com/Lightprotocol/light-protocol", features = ["cpi"] }
 groth16-solana = { git = "https://github.com/Lightprotocol/groth16-solana" }
 light-poseidon = { git = "https://github.com/Lightprotocol/light-poseidon" }

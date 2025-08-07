@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
-use light_account_compression::{
-    program::LightAccountCompression,
+use light_compressed_account::{
+    program::LightCompressedAccount,
     RegisteredProgram,
 };
 
@@ -25,7 +25,7 @@ pub struct Deposit<'info> {
     #[account(mut)]
     pub merkle_tree: AccountInfo<'info>,
     
-    pub account_compression_program: Program<'info, LightAccountCompression>,
+    pub account_compression_program: Program<'info, LightCompressedAccount>,
     pub system_program: Program<'info, System>,
 }
 
@@ -49,7 +49,7 @@ pub fn process_deposit(
     
     let insert_data = serialize_commitment_for_insertion(commitment)?;
     
-    let cpi_accounts = light_account_compression::cpi::accounts::GenericInstruction {
+    let cpi_accounts = light_compressed_account::cpi::accounts::GenericInstruction {
         authority: ctx.accounts.authority.to_account_info(),
         registered_program_pda: ctx.accounts.registered_program_pda.as_ref().map(|a| a.to_account_info()),
         log_wrapper: ctx.accounts.log_wrapper.to_account_info(),
@@ -61,7 +61,7 @@ pub fn process_deposit(
         cpi_accounts,
     );
     
-    light_account_compression::cpi::insert_into_queues(cpi_ctx, insert_data)
+    light_compressed_account::cpi::insert_into_queues(cpi_ctx, insert_data)
         .map_err(|_| ErrorCode::LightProtocolError)?;
     
     tornado_pool.deposit_count += 1;
