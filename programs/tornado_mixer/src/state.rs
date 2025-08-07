@@ -49,45 +49,13 @@ impl VaultState {
 }
 
 #[account]
-pub struct NullifierBitmap {
-    pub bitmap: [u64; 16384], // 16384 * 64 bits = ~1M nullifiers
-    
+pub struct NullifierPDA {
+    pub nullifier_hash: [u8; 32],
     pub bump: u8,
 }
 
-impl NullifierBitmap {
+impl NullifierPDA {
     pub const LEN: usize = 8 + // discriminator
-        8 * 16384 + // bitmap
+        32 + // nullifier_hash
         1; // bump
-
-    pub fn is_nullifier_spent(&self, nullifier_hash: &[u8; 32]) -> bool {
-        let index = self.nullifier_to_index(nullifier_hash);
-        let word_index = index / 64;
-        let bit_index = index % 64;
-        
-        if word_index >= self.bitmap.len() {
-            return false;
-        }
-        
-        (self.bitmap[word_index] & (1u64 << bit_index)) != 0
-    }
-
-    pub fn mark_nullifier_spent(&mut self, nullifier_hash: &[u8; 32]) -> Result<()> {
-        let index = self.nullifier_to_index(nullifier_hash);
-        let word_index = index / 64;
-        let bit_index = index % 64;
-        
-        if word_index >= self.bitmap.len() {
-            return Err(crate::errors::TornadoError::ArithmeticOverflow.into());
-        }
-        
-        self.bitmap[word_index] |= 1u64 << bit_index;
-        Ok(())
-    }
-
-    fn nullifier_to_index(&self, nullifier_hash: &[u8; 32]) -> usize {
-        let mut bytes = [0u8; 4];
-        bytes.copy_from_slice(&nullifier_hash[0..4]);
-        u32::from_le_bytes(bytes) as usize % (16384 * 64)
-    }
 }

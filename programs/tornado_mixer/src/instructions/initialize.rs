@@ -12,15 +12,6 @@ pub struct Initialize<'info> {
     )]
     pub vault_state: Account<'info, VaultState>,
 
-    #[account(
-        init,
-        payer = authority,
-        space = NullifierBitmap::LEN,
-        seeds = [NULLIFIER_SEED],
-        bump
-    )]
-    pub nullifier_bitmap: Account<'info, NullifierBitmap>,
-
     pub merkle_tree: UncheckedAccount<'info>,
 
     #[account(
@@ -38,7 +29,6 @@ pub struct Initialize<'info> {
 
 pub fn initialize(ctx: Context<Initialize>, deposit_amount: u64) -> Result<()> {
     let vault_state = &mut ctx.accounts.vault_state;
-    let nullifier_bitmap = &mut ctx.accounts.nullifier_bitmap;
 
     require!(
         deposit_amount == DEPOSIT_AMOUNT,
@@ -53,9 +43,6 @@ pub fn initialize(ctx: Context<Initialize>, deposit_amount: u64) -> Result<()> {
     vault_state.total_withdrawals = 0;
     vault_state.authority = ctx.accounts.authority.key();
     vault_state.bump = ctx.bumps.vault_state;
-
-    nullifier_bitmap.bitmap = [0u64; 16384];
-    nullifier_bitmap.bump = ctx.bumps.nullifier_bitmap;
 
     msg!("Tornado mixer initialized with deposit amount: {} lamports", deposit_amount);
 

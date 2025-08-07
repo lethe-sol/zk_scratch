@@ -3,6 +3,7 @@ use groth16_solana::groth16::Groth16Verifier;
 use crate::{constants::*, errors::TornadoError, state::*, verifying_key::get_verifying_key};
 
 #[derive(Accounts)]
+#[instruction(nullifier_hash: [u8; 32])]
 pub struct Withdraw<'info> {
     #[account(
         mut,
@@ -12,11 +13,13 @@ pub struct Withdraw<'info> {
     pub vault_state: Account<'info, VaultState>,
 
     #[account(
-        mut,
-        seeds = [NULLIFIER_SEED],
-        bump = nullifier_bitmap.bump
+        init,
+        payer = withdrawer,
+        space = NullifierPDA::LEN,
+        seeds = [NULLIFIER_SEED, &nullifier_hash],
+        bump
     )]
-    pub nullifier_bitmap: Account<'info, NullifierBitmap>,
+    pub nullifier_pda: Account<'info, NullifierPDA>,
 
     #[account(
         mut,
@@ -42,12 +45,7 @@ pub fn withdraw(
     recipient: Pubkey,
 ) -> Result<()> {
     let vault_state = &mut ctx.accounts.vault_state;
-    let nullifier_bitmap = &mut ctx.accounts.nullifier_bitmap;
-
-    require!(
-        !nullifier_bitmap.is_nullifier_spent(&nullifier_hash),
-        TornadoError::NullifierAlreadySpent
-    );
+    let nullifier_pda = &mut ctx.accounts.nullifier_pda;
 
     require!(
         vault_state.is_valid_root(&root),
@@ -74,7 +72,8 @@ pub fn withdraw(
         TornadoError::InvalidProof
     );
 
-    nullifier_bitmap.mark_nullifier_spent(&nullifier_hash)?;
+    nullifier_pda.nullifier_hash = nullifier_hash;
+    nullifier_pda.bump = ctx.bumps.nullifier_pda;
 
     let vault_balance = ctx.accounts.vault.lamports();
     let withdraw_amount = vault_state.deposit_amount;
