@@ -21,3 +21,4 @@ anchor-lang = { workspace = true }
 anchor-spl = { workspace = true }
 groth16-solana = { git = "https://github.com/Lightprotocol/groth16-solana" }
 light-poseidon = { git = "https://github.com/Lightprotocol/light-poseidon" }
+ark-bn254 = "0.4"
