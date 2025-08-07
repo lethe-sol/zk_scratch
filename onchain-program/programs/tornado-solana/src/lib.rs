@@ -7,7 +7,7 @@ pub mod errors;
 use instructions::*;
 use state::*;
 
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+declare_id!("9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM");
 
 #[program]
 pub mod tornado_solana {
@@ -18,14 +18,14 @@ pub mod tornado_solana {
         deposit_amount: u64,
         verification_key: Groth16VerifyingKey,
     ) -> Result<()> {
-        instructions::process_initialize(ctx, deposit_amount, verification_key)
+        instructions::initialize::process_initialize(ctx, deposit_amount, verification_key)
     }
 
     pub fn deposit(
         ctx: Context<Deposit>,
         commitment: [u8; 32],
     ) -> Result<()> {
-        instructions::process_deposit(ctx, commitment)
+        instructions::deposit::process_deposit(ctx, commitment)
     }
 
     pub fn withdraw(
@@ -37,7 +37,7 @@ pub mod tornado_solana {
         leaf_indices: Vec<u64>,
         proofs: Vec<Vec<[u8; 32]>>,
     ) -> Result<()> {
-        instructions::process_withdraw(
+        instructions::withdraw::process_withdraw(
             ctx,
             proof,
             public_inputs,

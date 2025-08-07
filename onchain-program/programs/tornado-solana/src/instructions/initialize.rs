@@ -17,9 +17,7 @@ pub struct Initialize<'info> {
     pub tornado_pool: Account<'info, TornadoPool>,
     
     pub merkle_tree: UncheckedAccount<'info>,
-    
     pub nullifier_queue: UncheckedAccount<'info>,
-    
     pub system_program: Program<'info, System>,
 }
 
@@ -31,7 +29,6 @@ pub fn process_initialize(
     let tornado_pool = &mut ctx.accounts.tornado_pool;
     
     require!(deposit_amount > 0, ErrorCode::InvalidDepositAmount);
-    
     require!(verification_key.ic.len() == 8, ErrorCode::InvalidVerificationKey);
     
     tornado_pool.authority = ctx.accounts.authority.key();

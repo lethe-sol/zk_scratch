@@ -4,7 +4,6 @@ use account_compression::{
     program::AccountCompression,
     RegisteredProgram,
 };
-
 use crate::state::TornadoPool;
 use crate::errors::ErrorCode;
 
@@ -37,13 +36,13 @@ pub struct Withdraw<'info> {
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct WithdrawPublicInputs {
-    pub root: [u8; 32],           // Current Merkle tree root
-    pub nullifier_hash: [u8; 32], // Hash of nullifier (prevents double-spend)
-    pub recipient_1: [u8; 32],    // First half of recipient Solana pubkey
-    pub recipient_2: [u8; 32],    // Second half of recipient Solana pubkey  
-    pub relayer_1: [u8; 32],      // First half of relayer pubkey (future use)
-    pub relayer_2: [u8; 32],      // Second half of relayer pubkey (future use)
-    pub fee: [u8; 32],           // Relayer fee (currently 0)
+    pub root: [u8; 32],
+    pub nullifier_hash: [u8; 32],
+    pub recipient_1: [u8; 32],
+    pub recipient_2: [u8; 32],
+    pub relayer_1: [u8; 32],
+    pub relayer_2: [u8; 32],
+    pub fee: [u8; 32],
 }
 
 pub fn process_withdraw(
@@ -60,7 +59,6 @@ pub fn process_withdraw(
     let verifier = Groth16Verifier::new(&tornado_pool.verification_key)?;
     
     let mut public_inputs_fields = Vec::new();
-    
     let bytes_to_field = |bytes: &[u8; 32]| -> [u8; 32] {
         let mut field_bytes = [0u8; 32];
         field_bytes[..31].copy_from_slice(&bytes[..31]);
@@ -139,7 +137,6 @@ fn reconstruct_solana_pubkey(
     full_key[16..].copy_from_slice(&part2[..16]);
     Ok(Pubkey::new_from_array(full_key))
 }
-
 
 #[event]
 pub struct WithdrawEvent {

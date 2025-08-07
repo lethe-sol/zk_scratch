@@ -3,7 +3,6 @@ use account_compression::{
     program::AccountCompression,
     RegisteredProgram,
 };
-
 use crate::state::TornadoPool;
 use crate::errors::ErrorCode;
 
@@ -47,8 +46,6 @@ pub fn process_deposit(
         tornado_pool.deposit_amount,
     )?;
     
-    let insert_data = serialize_commitment_for_insertion(commitment)?;
-    
     let cpi_accounts = account_compression::cpi::accounts::GenericInstruction {
         authority: ctx.accounts.authority.to_account_info(),
         registered_program_pda: ctx.accounts.registered_program_pda.as_ref().map(|a| a.to_account_info()),
@@ -61,7 +58,7 @@ pub fn process_deposit(
         cpi_accounts,
     );
     
-    account_compression::cpi::insert_into_queues(cpi_ctx, insert_data)
+    account_compression::cpi::insert_into_queues(cpi_ctx, commitment.to_vec())
         .map_err(|_| ErrorCode::LightProtocolError)?;
     
     tornado_pool.deposit_count += 1;
@@ -75,12 +72,6 @@ pub fn process_deposit(
     msg!("Deposit successful: commitment={:?}, leaf_index={}", commitment, tornado_pool.deposit_count - 1);
     
     Ok(())
-}
-
-fn serialize_commitment_for_insertion(commitment: [u8; 32]) -> Result<Vec<u8>> {
-    let mut data = Vec::new();
-    data.extend_from_slice(&commitment);
-    Ok(data)
 }
 
 #[event]
