@@ -46,7 +46,7 @@ export default function MixerPage() {
   }, []);
 
   const handleDeposit = async () => {
-    if (!connected || !publicKey || !sendTransaction) {
+    if (!connected || !publicKey) {
       toast.error('Please connect your wallet');
       return;
     }
@@ -60,10 +60,31 @@ export default function MixerPage() {
     setIsShielding(true);
 
     try {
-      toast.info(`Deposit functionality coming soon! Amount: ${amount} SOL`);
+      const { getProgram, DUMMY_COMMITMENT, DEPOSIT_AMOUNT } = await import('@/lib/program');
+      const program = getProgram({ publicKey, signTransaction: sendTransaction, signAllTransactions: sendTransaction } as any);
+      
+      const [tornadoPool] = PublicKey.findProgramAddressSync(
+        [Buffer.from("tornado_pool")],
+        program.programId
+      );
+      
+      toast.info("Initiating deposit transaction...");
+
+      const tx = await program.methods
+        .deposit(DUMMY_COMMITMENT)
+        .accounts({
+          tornadoPool,
+          user: publicKey,
+          systemProgram: SystemProgram.programId,
+        })
+        .rpc();
+
+      toast.success(`Deposit successful! Transaction: ${tx}`);
+      console.log("Deposit transaction:", tx);
+      
     } catch (error) {
       console.error('Deposit error:', error);
-      toast.error('Failed to create deposit. Please try again.');
+      toast.error(`Failed to create deposit: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsShielding(false);
     }
@@ -75,15 +96,59 @@ export default function MixerPage() {
       return;
     }
 
+    if (!connected || !publicKey) {
+      toast.error('Please connect your wallet');
+      return;
+    }
+
     setIsShielding(true);
 
     try {
-      toast.info(`Withdrawal functionality coming soon! Recipient: ${recipientAddress}`);
+      const { 
+        getProgram, 
+        DUMMY_PROOF, 
+        DUMMY_MERKLE_PROOF, 
+        DUMMY_PATH_INDICES,
+        DUMMY_RECIPIENT,
+        DUMMY_RELAYER,
+        DUMMY_FEE 
+      } = await import('@/lib/program');
+      const program = getProgram({ publicKey, signTransaction: sendTransaction, signAllTransactions: sendTransaction } as any);
+      
+      const [tornadoPool] = PublicKey.findProgramAddressSync(
+        [Buffer.from("tornado_pool")],
+        program.programId
+      );
+      
+      toast.info("Initiating withdrawal with dummy proof...");
+
+      const tx = await program.methods
+        .withdraw(
+          DUMMY_PROOF.pi_a,
+          DUMMY_PROOF.pi_b,
+          DUMMY_PROOF.pi_c,
+          DUMMY_MERKLE_PROOF,
+          DUMMY_PATH_INDICES,
+          new PublicKey(recipientAddress),
+          DUMMY_RELAYER,
+          DUMMY_FEE
+        )
+        .accounts({
+          tornadoPool,
+          recipient: new PublicKey(recipientAddress),
+          relayer: DUMMY_RELAYER,
+          systemProgram: SystemProgram.programId,
+        })
+        .rpc();
+
+      toast.success(`Withdrawal successful! Transaction: ${tx}`);
+      console.log("Withdrawal transaction:", tx);
       setNote('');
       setRecipientAddress('');
+      
     } catch (error) {
       console.error('Withdrawal error:', error);
-      toast.error('Failed to withdraw. Please try again.');
+      toast.error(`Failed to withdraw: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsShielding(false);
     }
