@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use account_compression::{
     program::AccountCompression,
-    cpi::accounts::AppendLeavesToMerkleTrees,
+    cpi::accounts::BatchAppend,
     RegisteredProgram,
 };
 use crate::state::TornadoPool;
@@ -47,11 +47,12 @@ pub fn process_deposit(
         tornado_pool.deposit_amount,
     )?;
     
-    let cpi_accounts = AppendLeavesToMerkleTrees {
+    let cpi_accounts = BatchAppend {
         authority: ctx.accounts.authority.to_account_info(),
         registered_program_pda: ctx.accounts.registered_program_pda.as_ref().map(|a| a.to_account_info()),
         log_wrapper: ctx.accounts.log_wrapper.to_account_info(),
         merkle_tree: ctx.accounts.merkle_tree.to_account_info(),
+        output_queue: ctx.accounts.merkle_tree.to_account_info(),
     };
     
     let cpi_ctx = CpiContext::new(
@@ -59,7 +60,7 @@ pub fn process_deposit(
         cpi_accounts,
     );
     
-    account_compression::cpi::append_leaves_to_merkle_trees(cpi_ctx, vec![commitment.to_vec()])
+    account_compression::cpi::batch_append(cpi_ctx, vec![commitment.to_vec()])
         .map_err(|_| ErrorCode::LightProtocolError)?;
     
     tornado_pool.deposit_count += 1;

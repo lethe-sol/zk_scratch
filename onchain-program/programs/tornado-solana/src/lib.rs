@@ -30,7 +30,9 @@ pub mod tornado_solana {
 
     pub fn withdraw(
         ctx: Context<Withdraw>,
-        proof: [u8; 256],
+        proof_a: [u8; 64],
+        proof_b: [u8; 128],
+        proof_c: [u8; 64],
         public_inputs: WithdrawPublicInputs,
         change_log_indices: Vec<u64>,
         leaves_queue_indices: Vec<u16>,
@@ -39,7 +41,9 @@ pub mod tornado_solana {
     ) -> Result<()> {
         instructions::withdraw::process_withdraw(
             ctx,
-            proof,
+            proof_a,
+            proof_b,
+            proof_c,
             public_inputs,
             change_log_indices,
             leaves_queue_indices,

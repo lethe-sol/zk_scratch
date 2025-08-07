@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use groth16_solana::groth16::Groth16Verifier;
+use groth16_solana::groth16::{Groth16Verifier, Groth16Verifyingkey};
 use account_compression::{
     program::AccountCompression,
     cpi::accounts::NullifyLeaves,
@@ -48,7 +48,9 @@ pub struct WithdrawPublicInputs {
 
 pub fn process_withdraw(
     ctx: Context<Withdraw>,
-    proof: [u8; 256],
+    proof_a: [u8; 64],
+    proof_b: [u8; 128],
+    proof_c: [u8; 64],
     public_inputs: WithdrawPublicInputs,
     change_log_indices: Vec<u64>,
     leaves_queue_indices: Vec<u16>,
@@ -57,26 +59,34 @@ pub fn process_withdraw(
 ) -> Result<()> {
     let tornado_pool = &mut ctx.accounts.tornado_pool;
     
-    let verifier = Groth16Verifier::new(&tornado_pool.verification_key)?;
-    
-    let mut public_inputs_fields = Vec::new();
-    let bytes_to_field = |bytes: &[u8; 32]| -> [u8; 32] {
-        let mut field_bytes = [0u8; 32];
-        field_bytes[..31].copy_from_slice(&bytes[..31]);
-        field_bytes
+    let light_vk = Groth16Verifyingkey {
+        nr_pubinputs: 7,
+        vk_alpha_g1: tornado_pool.verification_key.alpha,
+        vk_beta_g2: tornado_pool.verification_key.beta,
+        vk_gamme_g2: tornado_pool.verification_key.gamma,
+        vk_delta_g2: tornado_pool.verification_key.delta,
+        vk_ic: &tornado_pool.verification_key.ic,
     };
-    
-    public_inputs_fields.push(bytes_to_field(&public_inputs.root));
-    public_inputs_fields.push(bytes_to_field(&public_inputs.nullifier_hash));
-    public_inputs_fields.push(bytes_to_field(&public_inputs.recipient_1));
-    public_inputs_fields.push(bytes_to_field(&public_inputs.recipient_2));
-    public_inputs_fields.push(bytes_to_field(&public_inputs.relayer_1));
-    public_inputs_fields.push(bytes_to_field(&public_inputs.relayer_2));
-    public_inputs_fields.push(bytes_to_field(&public_inputs.fee));
-    
-    let is_valid = verifier.verify_proof(&proof, &public_inputs_fields)?;
-    
-    require!(is_valid, ErrorCode::InvalidProof);
+
+    let public_inputs_array: [[u8; 32]; 7] = [
+        public_inputs.root,
+        public_inputs.nullifier_hash,
+        public_inputs.recipient_1,
+        public_inputs.recipient_2,
+        public_inputs.relayer_1,
+        public_inputs.relayer_2,
+        public_inputs.fee,
+    ];
+
+    let mut verifier = Groth16Verifier::new(
+        &proof_a,
+        &proof_b,
+        &proof_c,
+        &public_inputs_array,
+        &light_vk,
+    ).map_err(|_| ErrorCode::InvalidProof)?;
+
+    verifier.verify().map_err(|_| ErrorCode::InvalidProof)?;
     
     let recipient_pubkey = reconstruct_solana_pubkey(
         public_inputs.recipient_1,
