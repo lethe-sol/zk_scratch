@@ -60,7 +60,7 @@ pub fn process_deposit(
         cpi_accounts,
     );
     
-    account_compression::cpi::batch_append(cpi_ctx, commitment)
+    account_compression::cpi::batch_append(cpi_ctx, commitment.to_vec())
         .map_err(|_| ErrorCode::LightProtocolError)?;
     
     tornado_pool.deposit_count += 1;
