@@ -99,7 +99,7 @@ pub fn get_verifying_key() -> Groth16Verifyingkey<'static> {
         nr_pubinputs: NR_PUBINPUTS,
         vk_alpha_g1: VK_ALPHA_G1,
         vk_beta_g2: VK_BETA_G2,
-        vk_gamme_g2: VK_GAMMA_G2,
+        vk_gamma_g2: VK_GAMMA_G2,
         vk_delta_g2: VK_DELTA_G2,
         vk_ic: &VK_IC,
     }
