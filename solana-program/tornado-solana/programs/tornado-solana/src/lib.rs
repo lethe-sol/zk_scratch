@@ -2,12 +2,13 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::Token;
 use spl_account_compression::{program::SplAccountCompression, Noop};
 
-declare_id!("11111111111111111111111111111111");
+declare_id!("DN3cDXsro55LEXrMwueUXci6EMJhomoHNFEh5LXceTF9");
 
 pub mod instructions;
 pub mod state;
 pub mod errors;
 pub mod events;
+pub mod verifying_key;
 
 use instructions::*;
 use state::*;

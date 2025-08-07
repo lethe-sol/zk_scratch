@@ -1,7 +1,11 @@
 use anchor_lang::prelude::*;
+use light_groth16_verifier::{
+    groth16::{Groth16Verifier, ProofPoints, Groth16Verifyingkey},
+};
 use crate::state::*;
 use crate::errors::*;
 use crate::events::*;
+use crate::verifying_key::VERIFYINGKEY;
 
 #[derive(Accounts)]
 #[instruction(nullifier_hash: [u8; 32])]
@@ -70,7 +74,7 @@ pub fn handler(
         &proof_b,
         &proof_c,
         &public_inputs,
-        &state.verifying_key,
+        state.verifying_key_initialized,
     )?;
     
     let deposit_amount = 100_000_000u64;
@@ -98,18 +102,40 @@ fn reconstruct_pubkey(part1: [u8; 32], part2: [u8; 32]) -> Result<Pubkey> {
 
 fn verify_groth16_proof(
     _verifier_program: &AccountInfo,
-    _proof_a: &[u8; 64],
-    _proof_b: &[u8; 128],
-    _proof_c: &[u8; 64],
-    _public_inputs: &[[u8; 32]; 7],
-    _verifying_key: &[u8; 2048],
+    proof_a: &[u8; 64],
+    proof_b: &[u8; 128],
+    proof_c: &[u8; 64],
+    public_inputs: &[[u8; 32]; 7],
+    verifying_key_initialized: bool,
 ) -> Result<()> {
+    require!(verifying_key_initialized, TornadoError::InvalidProof);
+    require!(*proof_a != [0u8; 64], TornadoError::InvalidProof);
+    require!(*proof_b != [0u8; 128], TornadoError::InvalidProof);
+    require!(*proof_c != [0u8; 64], TornadoError::InvalidProof);
     
-    require!(*_proof_a != [0u8; 64], TornadoError::InvalidProof);
-    require!(*_proof_b != [0u8; 128], TornadoError::InvalidProof);
-    require!(*_proof_c != [0u8; 64], TornadoError::InvalidProof);
+    let proof_points = ProofPoints {
+        a: *proof_a,
+        b: *proof_b,
+        c: *proof_c,
+    };
     
-    msg!("Groth16 proof verification placeholder - implement Light Protocol CPI");
+    let mut inputs = [0u64; 8];
+    for (i, input) in public_inputs.iter().enumerate() {
+        inputs[i] = u64::from_le_bytes(
+            input[0..8].try_into()
+                .map_err(|_| TornadoError::InvalidPublicInputs)?
+        );
+    }
+    
+    let verifier = Groth16Verifier::new(&proof_points, &inputs, &VERIFYINGKEY)
+        .map_err(|_| TornadoError::InvalidProof)?;
+    
+    let is_valid = verifier.verify()
+        .map_err(|_| TornadoError::InvalidProof)?;
+    
+    require!(is_valid, TornadoError::InvalidProof);
+    
+    msg!("Groth16 proof verification successful using Light Protocol");
     
     Ok(())
 }

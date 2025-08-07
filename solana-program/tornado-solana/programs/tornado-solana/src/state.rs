@@ -5,11 +5,11 @@ pub struct TornadoState {
     pub authority: Pubkey,           // Program authority
     pub merkle_tree: Pubkey,         // SPL compressed merkle tree account
     pub deposit_count: u64,          // Total deposits made
-    pub verifying_key: [u8; 2048],   // Groth16 verifying key from circuits
+    pub verifying_key_initialized: bool, // Flag to indicate verifying key is set
 }
 
 impl TornadoState {
-    pub const LEN: usize = 8 + 32 + 32 + 8 + 2048; // discriminator + authority + merkle_tree + deposit_count + verifying_key
+    pub const LEN: usize = 8 + 32 + 32 + 8 + 1; // discriminator + authority + merkle_tree + deposit_count + verifying_key_initialized
 }
 
 #[account]

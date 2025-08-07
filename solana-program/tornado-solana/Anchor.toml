@@ -3,7 +3,7 @@ seeds = false
 skip-lint = false
 
 [programs.devnet]
-tornado_solana = "11111111111111111111111111111111"
+tornado_solana = "DN3cDXsro55LEXrMwueUXci6EMJhomoHNFEh5LXceTF9"
 
 [registry]
 url = "https://api.apr.dev"
@@ -16,7 +16,7 @@ wallet = "~/.config/solana/id.json"
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
 
 [[test.genesis]]
-address = "cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK"
+address = "compr6CUsB5m2jS4Y3831ztGSTnDpnKJTKS95d64XVq"
 program = "spl_account_compression.so"
 
 [[test.genesis]]

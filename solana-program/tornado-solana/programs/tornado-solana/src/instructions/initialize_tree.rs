@@ -6,6 +6,7 @@ use spl_account_compression::{
 };
 use crate::state::*;
 use crate::errors::*;
+use crate::verifying_key::VERIFYINGKEY;
 
 #[derive(Accounts)]
 pub struct InitializeTree<'info> {
@@ -39,8 +40,7 @@ pub fn handler(ctx: Context<InitializeTree>) -> Result<()> {
     state.authority = ctx.accounts.payer.key();
     state.merkle_tree = ctx.accounts.merkle_tree.key();
     state.deposit_count = 0;
-    
-    state.verifying_key = [0u8; 2048];
+    state.verifying_key_initialized = true;
     
     let cpi_accounts = InitEmptyMerkleTree {
         merkle_tree: ctx.accounts.merkle_tree.to_account_info(),
@@ -54,6 +54,7 @@ pub fn handler(ctx: Context<InitializeTree>) -> Result<()> {
     init_empty_merkle_tree(cpi_ctx, 20, 64)?;
     
     msg!("Tornado Cash merkle tree initialized with depth 20");
+    msg!("Verifying key initialized with {} public inputs", VERIFYINGKEY.nr_pubinputs);
     
     Ok(())
 }
