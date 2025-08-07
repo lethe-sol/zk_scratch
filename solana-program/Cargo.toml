@@ -1,0 +1,29 @@
+[package]
+name = "tornado-mixer"
+version = "0.1.0"
+description = "Tornado Cash style mixer on Solana using Light Protocol"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "tornado_mixer"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+
+[dependencies]
+anchor-lang = "0.29.0"
+anchor-spl = "0.29.0"
+groth16-solana = { git = "https://github.com/Lightprotocol/groth16-solana.git" }
+spl-account-compression = { version = "0.3.0", features = ["cpi"] }
+spl-concurrent-merkle-tree = "0.2.0"
+bytemuck = "1.14"
+
+[dev-dependencies]
+solana-program-test = "1.18"
+solana-sdk = "1.18"
+tokio = { version = "1.0", features = ["macros"] }
