@@ -21,6 +21,7 @@ pub struct Deposit<'info> {
     
     pub authority: Signer<'info>,
     pub registered_program_pda: Option<Account<'info, RegisteredProgram>>,
+    /// CHECK: Log wrapper program for Light Protocol compression
     pub log_wrapper: UncheckedAccount<'info>,
     #[account(mut)]
     pub merkle_tree: AccountInfo<'info>,

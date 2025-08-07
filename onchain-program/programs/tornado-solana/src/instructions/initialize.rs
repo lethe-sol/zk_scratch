@@ -16,7 +16,9 @@ pub struct Initialize<'info> {
     )]
     pub tornado_pool: Account<'info, TornadoPool>,
     
+    /// CHECK: Merkle tree account for Light Protocol compression
     pub merkle_tree: UncheckedAccount<'info>,
+    /// CHECK: Nullifier queue account for Light Protocol compression
     pub nullifier_queue: UncheckedAccount<'info>,
     pub system_program: Program<'info, System>,
 }

@@ -20,11 +20,13 @@ pub struct Withdraw<'info> {
     )]
     pub tornado_pool: Account<'info, TornadoPool>,
     
+    /// CHECK: Recipient account for withdrawal funds
     #[account(mut)]
     pub recipient: UncheckedAccount<'info>,
     
     pub authority: Signer<'info>,
     pub registered_program_pda: Option<Account<'info, RegisteredProgram>>,
+    /// CHECK: Log wrapper program for Light Protocol compression
     pub log_wrapper: UncheckedAccount<'info>,
     #[account(mut)]
     pub merkle_tree: AccountInfo<'info>,
