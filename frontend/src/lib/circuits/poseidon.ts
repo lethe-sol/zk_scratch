@@ -1,6 +1,15 @@
-import * as circomlibjs from 'circomlibjs';
+import { buildPoseidon } from 'circomlibjs';
 
-export function poseidonHash(inputs: (string | number | bigint)[]): bigint {
+let poseidonInstance: any = null;
+
+async function getPoseidon() {
+  if (!poseidonInstance) {
+    poseidonInstance = await buildPoseidon();
+  }
+  return poseidonInstance;
+}
+
+export async function poseidonHash(inputs: (string | number | bigint)[]): Promise<bigint> {
   const bigIntInputs = inputs.map(input => {
     if (typeof input === 'string') {
       return BigInt(input);
@@ -10,15 +19,16 @@ export function poseidonHash(inputs: (string | number | bigint)[]): bigint {
     return input;
   });
   
-  return circomlibjs.poseidon(bigIntInputs);
+  const poseidon = await getPoseidon();
+  return poseidon(bigIntInputs);
 }
 
-export function generateCommitment(nullifier: string, secret: string): bigint {
-  return poseidonHash([nullifier, secret]);
+export async function generateCommitment(nullifier: string, secret: string): Promise<bigint> {
+  return await poseidonHash([nullifier, secret]);
 }
 
-export function generateNullifierHash(nullifier: string): bigint {
-  return poseidonHash([nullifier]);
+export async function generateNullifierHash(nullifier: string): Promise<bigint> {
+  return await poseidonHash([nullifier]);
 }
 
 export function bigIntToBytes32(value: bigint): Uint8Array {

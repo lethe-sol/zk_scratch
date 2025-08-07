@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import { LockIcon, EyeOffIcon, ArrowDownIcon, ArrowUpIcon, Copy, Download, X } from "lucide-react";
 import Image from "next/image";
 import { useWallet } from "@solana/wallet-adapter-react";
@@ -33,8 +34,18 @@ export default function MixerPage() {
   const [generatedNote, setGeneratedNote] = useState("");
   const [noteBalance, setNoteBalance] = useState("0.0000");
   const [isInitializing, setIsInitializing] = useState(false);
+  const [dummyMode, setDummyMode] = useState(false);
 
   const TORNADO_PROGRAM_ID = "wFafLjoy9oEs8jqWC65kDMB4MdpBCoT5imbqsddqFJJ";
+
+  const handleDummyModeToggle = async () => {
+    console.log('handleDummyModeToggle called, current dummyMode:', dummyMode);
+    const { setDummyMode: setProgramDummyMode } = await import('@/lib/program');
+    const newMode = !dummyMode;
+    console.log('Setting dummy mode to:', newMode);
+    setDummyMode(newMode);
+    setProgramDummyMode(newMode);
+  };
 
   const handleNoteChange = useCallback(async (value: string) => {
     setNote(value);
@@ -226,12 +237,24 @@ export default function MixerPage() {
         <div className="grid gap-8 grid-cols-1 max-w-2xl mx-auto">
           <Card className="bg-cyber-surface border-cyber-glow/30 shadow-cyber">
             <CardHeader>
-              <CardTitle className="text-cyber-glow font-mono">
-                TORNADO PROTOCOL
-              </CardTitle>
-              <CardDescription className="text-muted-foreground font-mono text-xs">
-                Anonymize your on-chain holdings with zero-knowledge proofs
-              </CardDescription>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle className="text-cyber-glow font-mono">
+                    TORNADO PROTOCOL {dummyMode && "(DUMMY MODE)"}
+                  </CardTitle>
+                  <CardDescription className="text-muted-foreground font-mono text-xs">
+                    {dummyMode ? "Testing with fake proofs - deposits/withdrawals are unlinkable" : "Anonymize your on-chain holdings with zero-knowledge proofs"}
+                  </CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label className="text-cyber-glow font-mono text-xs">DUMMY</Label>
+                  <Switch 
+                    checked={dummyMode}
+                    onCheckedChange={handleDummyModeToggle}
+                    className="data-[state=checked]:bg-cyber-glow"
+                  />
+                </div>
+              </div>
             </CardHeader>
             
             <CardContent className="pb-4">
@@ -290,11 +313,11 @@ export default function MixerPage() {
 
                     <Button 
                       variant="cyber" 
-                      className="w-full py-6 text-lg"
+                      className={`w-full py-6 text-lg ${dummyMode ? 'bg-orange-600 hover:bg-orange-700' : ''}`}
                       onClick={handleDeposit}
                       disabled={isShielding || isInitializing}
                     >
-                      {isShielding ? 'PROCESSING...' : 'INITIATE DEPOSIT'}
+                      {isShielding ? 'PROCESSING...' : dummyMode ? 'DUMMY DEPOSIT (0.1 SOL)' : 'INITIATE DEPOSIT'}
                     </Button>
                   </div>
                 </TabsContent>
@@ -343,11 +366,11 @@ export default function MixerPage() {
 
                     <Button 
                       variant="cyber" 
-                      className="w-full py-6 text-lg"
+                      className={`w-full py-6 text-lg ${dummyMode ? 'bg-orange-600 hover:bg-orange-700' : ''}`}
                       onClick={handleWithdraw}
                       disabled={!note || !recipientAddress || isShielding}
                     >
-                      {isShielding ? 'PROCESSING...' : 'EXECUTE WITHDRAWAL'}
+                      {isShielding ? 'PROCESSING...' : dummyMode ? 'DUMMY WITHDRAWAL' : 'EXECUTE WITHDRAWAL'}
                     </Button>
                   </div>
                 </TabsContent>
