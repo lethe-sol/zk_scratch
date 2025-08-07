@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { LockIcon, EyeOffIcon, ArrowDownIcon, ArrowUpIcon, Copy, Download, X } from "lucide-react";
 import Image from "next/image";
-import { useWallet } from "@solana/wallet-adapter-react";
+import { useWallet, useAnchorWallet } from "@solana/wallet-adapter-react";
 import { PhantomWalletName } from "@solana/wallet-adapter-phantom";
 import { 
   PublicKey, 
@@ -23,7 +23,8 @@ import {
 import { toast } from "sonner";
 
 export default function MixerPage() {
-  const { publicKey, connected, sendTransaction, connect, disconnect, connecting, select } = useWallet();
+  const { connected, connect, disconnect, connecting, select } = useWallet();
+  const wallet = useAnchorWallet();
   const fixedAmounts = [0.1, 1, 10, 100];
   const [selectedAmountIndex, setSelectedAmountIndex] = useState([1]);
   const [note, setNote] = useState("");
@@ -46,7 +47,7 @@ export default function MixerPage() {
   }, []);
 
   const handleDeposit = async () => {
-    if (!connected || !publicKey) {
+    if (!connected || !wallet) {
       toast.error('Please connect your wallet');
       return;
     }
@@ -65,7 +66,7 @@ export default function MixerPage() {
       
       toast.info("Generating commitment and initiating deposit...");
 
-      const { tx, note } = await deposit({ publicKey, signTransaction: sendTransaction, signAllTransactions: sendTransaction } as any);
+      const { tx, note } = await deposit(wallet);
       const noteString = NoteManager.formatNoteString(note);
       
       setGeneratedNote(noteString);
@@ -89,7 +90,7 @@ export default function MixerPage() {
       return;
     }
 
-    if (!connected || !publicKey) {
+    if (!connected || !wallet) {
       toast.error('Please connect your wallet');
       return;
     }
@@ -102,7 +103,7 @@ export default function MixerPage() {
       toast.info("Generating ZK proof and initiating withdrawal...");
 
       const tx = await withdraw(
-        { publicKey, signTransaction: sendTransaction, signAllTransactions: sendTransaction } as any,
+        wallet,
         note,
         new PublicKey(recipientAddress)
       );
@@ -126,7 +127,7 @@ export default function MixerPage() {
   };
 
   const handleInitialize = async () => {
-    if (!connected || !publicKey) {
+    if (!connected || !wallet) {
       toast.error('Please connect your wallet');
       return;
     }
@@ -138,7 +139,7 @@ export default function MixerPage() {
       
       toast.info("Initializing Tornado program...");
 
-      const tx = await initializeProgram({ publicKey, signTransaction: sendTransaction, signAllTransactions: sendTransaction } as any);
+      const tx = await initializeProgram(wallet);
       
       toast.success(`Program initialized! Transaction: ${tx}`);
       console.log("Initialization transaction:", tx);
