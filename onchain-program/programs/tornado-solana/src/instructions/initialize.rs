@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use crate::state::{TornadoPool, Groth16VerifyingKey};
+use crate::state::{TornadoPool, VerificationKeyAccount, Groth16VerifyingKey};
 use crate::merkle_tree::{MerkleTree, NullifierSet};
 use crate::errors::ErrorCode;
 
@@ -53,7 +53,11 @@ pub fn process_initialize(
     tornado_pool.bump = ctx.bumps.tornado_pool;
     tornado_pool.deposit_amount = deposit_amount;
     tornado_pool.deposit_count = 0;
-    tornado_pool.verification_key = verification_key;
+    let [verification_key_pda, _] = Pubkey::find_program_address(
+        &[b"verification_key"],
+        ctx.program_id,
+    );
+    tornado_pool.verification_key_account = verification_key_pda;
     
     merkle_tree.initialize(ctx.bumps.merkle_tree)?;
     nullifier_set.initialize(ctx.bumps.nullifier_set)?;
