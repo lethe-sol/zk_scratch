@@ -6,7 +6,6 @@ members = [
 ]
 [workspace.dependencies]
 sha2 = "0.10.8"
-[patch.crates-io]
 anchor-lang = "0.29.0"
 
 [profile.release]
