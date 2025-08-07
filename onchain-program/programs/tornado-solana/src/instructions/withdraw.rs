@@ -66,34 +66,13 @@ pub fn process_withdraw(
     let merkle_tree = &ctx.accounts.merkle_tree;
     let nullifier_set = &mut ctx.accounts.nullifier_set;
     
-    let light_vk = Groth16Verifyingkey {
-        nr_pubinputs: 7,
-        vk_alpha_g1: ctx.accounts.verification_key_account.verification_key.alpha,
-        vk_beta_g2: ctx.accounts.verification_key_account.verification_key.beta,
-        vk_gamme_g2: ctx.accounts.verification_key_account.verification_key.gamma,
-        vk_delta_g2: ctx.accounts.verification_key_account.verification_key.delta,
-        vk_ic: &ctx.accounts.verification_key_account.verification_key.ic,
-    };
-
-    let public_inputs_array: [[u8; 32]; 7] = [
-        public_inputs.root,
-        public_inputs.nullifier_hash,
-        public_inputs.recipient_1,
-        public_inputs.recipient_2,
-        public_inputs.relayer_1,
-        public_inputs.relayer_2,
-        public_inputs.fee,
-    ];
-
-    let mut verifier = Groth16Verifier::new(
+    verify_groth16_proof(
         &proof_a,
         &proof_b,
         &proof_c,
-        &public_inputs_array,
-        &light_vk,
-    ).map_err(|_| ErrorCode::InvalidProof)?;
-
-    verifier.verify().map_err(|_| ErrorCode::InvalidProof)?;
+        &public_inputs,
+        &ctx.accounts.verification_key_account.verification_key,
+    )?;
     
     require!(merkle_tree.is_valid_root(public_inputs.root), ErrorCode::InvalidMerkleProof);
     
@@ -121,6 +100,45 @@ pub fn process_withdraw(
     });
     
     msg!("Withdrawal successful: nullifier_hash={:?}, recipient={}", public_inputs.nullifier_hash, recipient_pubkey);
+    
+    Ok(())
+}
+
+fn verify_groth16_proof(
+    proof_a: &[u8; 64],
+    proof_b: &[u8; 128],
+    proof_c: &[u8; 64],
+    public_inputs: &WithdrawPublicInputs,
+    verification_key: &crate::state::Groth16VerifyingKey,
+) -> Result<()> {
+    let light_vk = Groth16Verifyingkey {
+        nr_pubinputs: 7,
+        vk_alpha_g1: verification_key.alpha,
+        vk_beta_g2: verification_key.beta,
+        vk_gamme_g2: verification_key.gamma,
+        vk_delta_g2: verification_key.delta,
+        vk_ic: &verification_key.ic,
+    };
+
+    let public_inputs_array: [[u8; 32]; 7] = [
+        public_inputs.root,
+        public_inputs.nullifier_hash,
+        public_inputs.recipient_1,
+        public_inputs.recipient_2,
+        public_inputs.relayer_1,
+        public_inputs.relayer_2,
+        public_inputs.fee,
+    ];
+
+    let mut verifier = Groth16Verifier::new(
+        proof_a,
+        proof_b,
+        proof_c,
+        &public_inputs_array,
+        &light_vk,
+    ).map_err(|_| ErrorCode::InvalidProof)?;
+
+    verifier.verify().map_err(|_| ErrorCode::InvalidProof)?;
     
     Ok(())
 }
