@@ -8,22 +8,20 @@ pub mod instructions;
 pub mod state;
 pub mod verifying_key;
 
-use instructions::*;
-
 #[program]
 pub mod tornado_mixer {
-    use super::*;
+    use super::instructions;
 
-    pub fn initialize(ctx: Context<Initialize>, deposit_amount: u64) -> Result<()> {
+    pub fn initialize(ctx: Context<instructions::Initialize>, deposit_amount: u64) -> Result<()> {
         instructions::initialize(ctx, deposit_amount)
     }
 
-    pub fn deposit(ctx: Context<Deposit>, commitment: [u8; 32]) -> Result<()> {
+    pub fn deposit(ctx: Context<instructions::Deposit>, commitment: [u8; 32]) -> Result<()> {
         instructions::deposit(ctx, commitment)
     }
 
     pub fn withdraw(
-        ctx: Context<Withdraw>,
+        ctx: Context<instructions::Withdraw>,
         proof: [u8; 256],
         root: [u8; 32],
         nullifier_hash: [u8; 32],
