@@ -1,5 +1,3 @@
-#[cfg(not(any(rust_2018, rust_2021)))]
-compile_error!("This crate is not compiling with Rust 2018+ edition.");
 
 use anchor_lang::prelude::*;
 
