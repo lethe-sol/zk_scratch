@@ -9,7 +9,8 @@ pub struct Initialize<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
 
-    /// PDA signer used as the Merkle tree authority for deposits.
+    /// CHECK: PDA signer for the Merkle tree authority; holds lamports and signs via seeds [b"vault"].
+
     /// (Lamport bucket / signer via seeds; no data needed.)
     #[account(
         init,
@@ -20,9 +21,10 @@ pub struct Initialize<'info> {
     )]
     pub vault: UncheckedAccount<'info>,
 
+   .
+    /// CHECK: REAL SPL CMT account (owned by cmtDvXum…); validated in handler.
     /// REAL Concurrent Merkle Tree account (owned by SPL Account Compression).
-    /// We mark it mut because we'll append leaves later.
-    /// CHECK: ownership verified in handler.
+    /// We mark it mut because we'll append leaves later
     #[account(mut)]
     pub merkle_tree: UncheckedAccount<'info>,
 
