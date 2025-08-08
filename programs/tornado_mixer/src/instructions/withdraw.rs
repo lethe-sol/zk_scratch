@@ -7,9 +7,7 @@ use crate::state::{MixerConfig, NullifierState};
 /// Notes:
 /// - `merkle_tree` must equal the SPL CMT tree stored in `config`.
 /// - `vault` is the PDA authority (seed = "vault") that holds funds and signs via seeds.
-/// - `nullifier` PDA (seed = ["nullifier", nullifier_hash]) is *initialized* here to
-///   enforce one-time spend on-chain. A second withdrawal with the same nullifier_hash
-///   will fail at account-creation time.
+/// - `nullifier` PDA (seed = ["nullifier", nullifier_hash]) is initialized to enforce one-time spend.
 /// - `recipient` receives the lamports after proof verification in the handler.
 #[derive(Accounts)]
 #[instruction(nullifier_hash: [u8; 32])]
@@ -22,9 +20,7 @@ pub struct Withdraw<'info> {
     pub config: Account<'info, MixerConfig>,
 
     /// CHECK: Must equal `config.merkle_tree` (validated by constraint).
-    #[account(
-        address = config.merkle_tree
-    )]
+    #[account(address = config.merkle_tree)]
     pub merkle_tree: UncheckedAccount<'info>,
 
     /// CHECK: Vault PDA authority for the tree & funds.
@@ -43,7 +39,7 @@ pub struct Withdraw<'info> {
         seeds = [b"nullifier", nullifier_hash.as_ref()],
         bump,
         payer = payer,
-        space = 8 // discriminator only; no extra data needed
+        space = 8 // discriminator only
     )]
     pub nullifier: Account<'info, NullifierState>,
 
