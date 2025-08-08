@@ -22,7 +22,7 @@ use spl_account_compression::concurrent_tree_wrapper::{
     merkle_tree_append_leaf,
 };
 
-declare_id!("31zAuv25vz5tV8oiHuq49Zd827mNpbaaZ6P7da6hHB8g"); // replace with your real program id
+declare_id!("2xBPdkCzfwFdc6khqbvaAvYxWcKMRaueXeVyaLRoWDrN"); // replace with your real program id
 
 #[program]
 pub mod tornado_mixer {
