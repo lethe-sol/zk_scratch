@@ -87,6 +87,7 @@ async function withdraw() {
     
     console.log("Commitment:", Array.from(commitment).slice(0, 8).join(','), "... (32 bytes)");
     console.log("Nullifier Hash:", Array.from(nullifierHash).slice(0, 8).join(','), "... (32 bytes)");
+    console.log("Using exact nullifier hash from deposit file (not recalculating)");
 
     const mockProof = generateMockProof();
     const mockRoot = generateMockRoot();
@@ -110,10 +111,24 @@ async function withdraw() {
       PROGRAM_ID
     );
 
+    console.log("\n🔍 Debugging PDA calculation:");
+    console.log("Nullifier hash bytes:", Array.from(nullifierHash));
+    console.log("Nullifier hash length:", nullifierHash.length);
+    
     const [nullifierPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from("nullifier"), nullifierHash],
+      [Buffer.from("nullifier"), Buffer.from(nullifierHash)],
       PROGRAM_ID
     );
+    
+    console.log("Calculated nullifier PDA:", nullifierPda.toString());
+    console.log("Expected PDA from error: DnbL6Uz5v9pcuSXyzDvim2SgVK3UCBWEjS5DQ32x7z8m");
+    
+    const instructionNullifierHash = new Uint8Array(Array.from(nullifierHash));
+    const [nullifierPda2] = PublicKey.findProgramAddressSync(
+      [Buffer.from("nullifier"), Buffer.from(instructionNullifierHash)],
+      PROGRAM_ID
+    );
+    console.log("PDA with instruction format:", nullifierPda2.toString());
 
     const recipient = wallet.publicKey;
 
@@ -135,11 +150,13 @@ async function withdraw() {
     console.log("Vault balance:", vaultBalance / 1e9, "SOL");
 
     try {
+      const nullifierHashArray: number[] = Array.from(nullifierHash);
+      
       const tx = await program.methods
         .withdraw(
           Array.from(mockProof),
           Array.from(mockRoot),
-          Array.from(nullifierHash),
+          nullifierHashArray,
           recipient
         )
         .accounts({
