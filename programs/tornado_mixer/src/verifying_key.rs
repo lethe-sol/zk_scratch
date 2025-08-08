@@ -101,4 +101,4 @@ pub const VERIFYING_KEY: Groth16Verifyingkey<'static> = Groth16Verifyingkey {
         vk_gamme_g2: VK_GAMMA_G2,
         vk_delta_g2: VK_DELTA_G2,
         vk_ic: &VK_IC,
-]
+}
