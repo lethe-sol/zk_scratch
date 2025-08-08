@@ -7,7 +7,6 @@ anchor-lang = "0.31.1"
 anchor-spl  = "0.31.1"
 # Move compression to the 1.18-era crate line
 spl-account-compression = { version = "0.4.0", features = ["cpi"] }
-solana-program = "1.18.18"   # <- add this line if you insist
 
 [profile.release]
 overflow-checks = true
