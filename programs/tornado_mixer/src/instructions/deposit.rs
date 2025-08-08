@@ -6,8 +6,7 @@ use crate::state::MixerConfig;
 // SPL State/Account Compression + noop (log wrapper)
 use spl_account_compression::program::SplAccountCompression;
 use spl_account_compression::cpi::{accounts::Modify, append};
-spl_account_compression::Noop; // <- correct import (crate root)
-
+use spl_noop::noop;
 #[derive(Accounts)]
 pub struct Deposit<'info> {
     /// Payer; funds move from here into the vault PDA
