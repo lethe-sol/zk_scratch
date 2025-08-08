@@ -41,3 +41,50 @@ pub struct Deposit<'info> {
 
     pub system_program: Program<'info, System>,
 }
+
+pub fn deposit(ctx: Context<Deposit>, commitment: [u8; 32]) -> Result<()> {
+    let vault_state = &mut ctx.accounts.vault_state;
+    let deposit_amount = vault_state.deposit_amount;
+
+    // Transfer lamports from depositor to vault PDA
+    let transfer_instruction = system_program::Transfer {
+        from: ctx.accounts.depositor.to_account_info(),
+        to: ctx.accounts.vault.to_account_info(),
+    };
+    system_program::transfer(
+        CpiContext::new(
+            ctx.accounts.system_program.to_account_info(),
+            transfer_instruction,
+        ),
+        deposit_amount,
+    )?;
+
+    // Append commitment to merkle tree via CPI
+    let cpi_accounts = spl_account_compression::cpi::accounts::Modify {
+        merkle_tree: ctx.accounts.merkle_tree.to_account_info(),
+        authority: ctx.accounts.tree_authority.to_account_info(),
+        noop: ctx.accounts.noop_program.to_account_info(),
+    };
+    let cpi_ctx = CpiContext::new(
+        ctx.accounts.compression_program.to_account_info(),
+        cpi_accounts,
+    );
+    append(cpi_ctx, commitment).map_err(|e| {
+        msg!("Failed to append to merkle tree: {:?}", e);
+        TornadoError::InvalidProof
+    })?;
+
+    // Update deposit counter
+    vault_state.total_deposits = vault_state
+        .total_deposits
+        .checked_add(1)
+        .ok_or(TornadoError::ArithmeticOverflow)?;
+
+    msg!(
+        "Deposit successful: commitment={:?}, total_deposits={}",
+        commitment,
+        vault_state.total_deposits
+    );
+
+    Ok(())
+}
