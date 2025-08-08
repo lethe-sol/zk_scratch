@@ -4,9 +4,8 @@ import fs from "fs";
 import path from "path";
 
 const PROGRAM_ID = new PublicKey("2xBPdkCzfwFdc6khqbvaAvYxWcKMRaueXeVyaLRoWDrN");
-const DEPOSIT_AMOUNT = 100_000_000; // 0.1 SOL in lamports
+const DEPOSIT_AMOUNT = 100_000_000; // 0.1 SOL
 
-// Hardcoded program IDs for State/Account Compression + Noop
 const SPL_ACCOUNT_COMPRESSION_PROGRAM_ID = new PublicKey(
   "cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK"
 );
@@ -14,7 +13,7 @@ const SPL_NOOP_PROGRAM_ID = new PublicKey(
   "noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV"
 );
 
-// Toy hash function (little-endian bytes)
+// Toy hash function (little-endian bytes) — unchanged
 function simpleHash(inputs: number[]): number[] {
   const p =
     21888242871839275222246405745257275088548364400416034343698204186575808495617n;
@@ -39,118 +38,78 @@ async function deposit() {
   );
   anchor.setProvider(provider);
 
-  // --- Load IDL (do NOT mutate it) ---
+  // --- Load & patch IDL: strip 'accounts' so Anchor won't try to build Account clients ---
   const idlPath = path.join(__dirname, "tornado_mixer.json");
-  const idl = JSON.parse(fs.readFileSync(idlPath, "utf8"));
-  if (!idl?.instructions) throw new Error("IDL missing instructions array");
+  const idlRaw = JSON.parse(fs.readFileSync(idlPath, "utf8"));
+  if (!idlRaw?.instructions) throw new Error("IDL missing instructions array");
+  const idlPatched: any = { ...idlRaw };
+  delete idlPatched.accounts; // <-- critical hack for your current IDL shape
 
-  // --- Build Program with version-agnostic ctor ---
+  // Build Program in a version-agnostic way (try both ctor orders)
   const ProgramCtor: any = (anchor as any).Program;
   let program: any;
   try {
-    // Common in newer Anchor: (idl, programId, provider)
-    program = new ProgramCtor(idl, PROGRAM_ID, provider);
+    // Newer: (idl, programId, provider)
+    program = new ProgramCtor(idlPatched, PROGRAM_ID, provider);
   } catch {
-    // Older signature some people have installed: (idl, provider, programId)
-    program = new ProgramCtor(idl, provider, PROGRAM_ID);
+    // Older: (idl, provider, programId)
+    program = new ProgramCtor(idlPatched, provider, PROGRAM_ID);
   }
 
+  // Sanity: make sure instruction encoder exists
   if (!program?.coder?.instruction?.encode) {
     throw new Error("Program coder not initialized (bad ctor order or invalid IDL).");
   }
 
-  // --- Figure out what the IDL expects for `deposit` ---
-  const depIx = idl.instructions.find((ix: any) => ix.name === "deposit");
-  if (!depIx) throw new Error("IDL has no 'deposit' instruction");
-  console.log("IDL deposit args:", depIx.args);
-  console.log("IDL deposit accounts:", depIx.accounts.map((a: any) => a.name));
-
-  // --- Generate toy commitment ---
+  // ---- Generate toy commitment (unchanged) ----
   const nullifier = Math.floor(Math.random() * 2 ** 30);
   const secret = Math.floor(Math.random() * 2 ** 30);
-
-  console.log("🔐 Generating commitment...");
-  console.log("Nullifier:", nullifier, "Secret:", secret);
-
   const commitment = simpleHash([nullifier, secret]);
   const nullifierHash = simpleHash([nullifier]);
 
-  // --- Derive PDAs (your original seeds) ---
+  // ---- PDAs (your original seeds) ----
   const [vaultPda] = PublicKey.findProgramAddressSync([Buffer.from("vault")], PROGRAM_ID);
   const [merkleTreePda] = PublicKey.findProgramAddressSync([Buffer.from("tree")], PROGRAM_ID);
   const [configPda] = PublicKey.findProgramAddressSync([Buffer.from("config")], PROGRAM_ID);
 
-  const wallet = provider.wallet.publicKey;
-
-  // --- Auto-map account names from IDL to your available keys ---
-  const candidateValues: Record<string, PublicKey> = {
-    user: wallet,
-    depositor: wallet,
-
-    config: configPda,
-    vault_state: configPda,
-
-    merkleTree: merkleTreePda,
-    merkle_tree: merkleTreePda,
-
-    treeAuthority: merkleTreePda,
-    tree_authority: merkleTreePda,
-
-    vault: vaultPda,
-
-    compressionProgram: SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
+  // ---- EXACT IDL account names for 'deposit' ----
+  const accounts = {
+    user: provider.wallet.publicKey,                       // signer & writable
+    config: configPda,                                     // MixerConfig PDA
+    merkle_tree: merkleTreePda,                            // writable
+    vault: vaultPda,                                       // writable (PDA "vault")
     compression_program: SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
-
-    noopProgram: SPL_NOOP_PROGRAM_ID,
     noop_program: SPL_NOOP_PROGRAM_ID,
-
-    systemProgram: SystemProgram.programId,
     system_program: SystemProgram.programId,
   };
 
-  const accounts: Record<string, PublicKey> = {};
-  for (const a of depIx.accounts) {
-    const name = a.name as string;
-    const v = candidateValues[name];
-    if (!v) {
-      throw new Error(
-        `No mapping for required account '${name}'. Known keys: ${Object.keys(candidateValues).join(", ")}`
-      );
-    }
-    accounts[name] = v;
-  }
-
-  console.log(
-    "\n📦 Accounts being sent to deposit():",
-    Object.fromEntries(Object.entries(accounts).map(([k, v]) => [k, v.toBase58()]))
+  console.log("\n📦 Accounts being sent to deposit():",
+    Object.fromEntries(Object.entries(accounts).map(([k, v]) => [k, (v as PublicKey).toBase58()]))
   );
 
-  // --- Optional: check wallet balance like before ---
-  const bal = await connection.getBalance(wallet);
+  // (Optional) balance check; your program should transfer inside the handler
+  const bal = await connection.getBalance(provider.wallet.publicKey);
   if (bal < DEPOSIT_AMOUNT + 5_000) {
-    console.warn("⚠️ Low balance for a real transfer; proceeding with call anyway.");
+    console.warn("⚠️ Low balance for a real transfer; proceeding anyway for tree test.");
   }
 
-  // --- Call the instruction ---
+  // ---- Call deposit ----
   const tx = await program.methods.deposit(commitment as number[]).accounts(accounts).rpc();
+  console.log("✅ Deposit successful! tx:", tx);
 
-  console.log("✅ Deposit successful!");
-  console.log("Transaction signature:", tx);
-
-  // Save the note file just like before
-  const depositInfo = {
+  // Save a note file like before
+  const note = {
     nullifier,
     secret,
     commitment,
     nullifierHash,
-    transactionSignature: tx,
+    tx,
     timestamp: new Date().toISOString(),
-    note:
-      "⚠️ Toy hash for testing. Use Poseidon consistent with your circuit before wiring withdraw.",
+    note: "Toy hash only. Swap to Poseidon consistent with your circuit.",
   };
-  const depositInfoPath = path.join(__dirname, `deposit_${Date.now()}.json`);
-  fs.writeFileSync(depositInfoPath, JSON.stringify(depositInfo, null, 2));
-  console.log("\n💾 Deposit info saved to:", depositInfoPath);
+  const fp = path.join(__dirname, `deposit_${Date.now()}.json`);
+  fs.writeFileSync(fp, JSON.stringify(note, null, 2));
+  console.log("💾 Saved:", fp);
 }
 
 deposit().catch((e) => {
