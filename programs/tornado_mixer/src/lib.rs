@@ -8,7 +8,7 @@ pub mod instructions;
 pub mod state;
 pub mod verifying_key;
 
-use instructions::{deposit::Deposit, initialize::Initialize, withdraw::Withdraw};
+use instructions::{deposit::deposit, initialize::initialize, withdraw::withdraw};
 
 #[program]
 pub mod tornado_mixer {
