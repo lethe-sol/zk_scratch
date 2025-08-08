@@ -1,3 +1,4 @@
+// programs/tornado_mixer/src/instructions/initialize.rs
 use anchor_lang::prelude::*;
 use crate::state::MixerConfig;
 use spl_account_compression::ID as CMT_ID;
@@ -8,8 +9,8 @@ pub struct Initialize<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
 
-    /// PDA that will act as the Merkle tree authority for deposits.
-    /// (Just a lamport bucket / signer via seeds; no data needed.)
+    /// PDA signer used as the Merkle tree authority for deposits.
+    /// (Lamport bucket / signer via seeds; no data needed.)
     #[account(
         init,
         seeds = [b"vault"],
@@ -19,9 +20,8 @@ pub struct Initialize<'info> {
     )]
     pub vault: UncheckedAccount<'info>,
 
-    /// The REAL Concurrent Merkle Tree account you created off-chain.
-    /// Must be owned by the SPL Account Compression program (cmtDvXum…).
-    /// We mark it mut because you'll append leaves later.
+    /// REAL Concurrent Merkle Tree account (owned by SPL Account Compression).
+    /// We mark it mut because we'll append leaves later.
     /// CHECK: ownership verified in handler.
     #[account(mut)]
     pub merkle_tree: UncheckedAccount<'info>,
@@ -40,16 +40,17 @@ pub struct Initialize<'info> {
 }
 
 pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
-    // Ensure we're pointing at an actual SPL CMT account, not your program’s PDA.
+    // Ensure this is an actual SPL CMT account (not our own PDA).
+    // AccountInfo.owner is &Pubkey, so deref it for comparison.
     require_keys_eq!(
-        ctx.accounts.merkle_tree.owner,
+        *ctx.accounts.merkle_tree.owner,
         CMT_ID,
     );
 
-    // (Optional but recommended) Sanity log:
-    msg!("Initialized with Merkle tree = {}", ctx.accounts.merkle_tree.key());
-
-    // Persist the tree so deposit() can require it later.
+    // Persist the tree so deposit() can enforce it later.
     ctx.accounts.config.merkle_tree = ctx.accounts.merkle_tree.key();
+
+    // Optional: log for sanity
+    msg!("Initialized with Merkle tree = {}", ctx.accounts.merkle_tree.key());
     Ok(())
 }
