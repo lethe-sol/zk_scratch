@@ -9,9 +9,8 @@ pub struct Initialize<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
 
-    /// CHECK: PDA signer for the Merkle tree authority; holds lamports and signs via seeds [b"vault"].
-
-    /// (Lamport bucket / signer via seeds; no data needed.)
+    /// CHECK: PDA signer for the Merkle tree authority; holds lamports and
+    /// signs via seeds [b"vault"]. No data is stored in this account.
     #[account(
         init,
         seeds = [b"vault"],
@@ -21,10 +20,9 @@ pub struct Initialize<'info> {
     )]
     pub vault: UncheckedAccount<'info>,
 
-   .
-    /// CHECK: REAL SPL CMT account (owned by cmtDvXum…); validated in handler.
-    /// REAL Concurrent Merkle Tree account (owned by SPL Account Compression).
-    /// We mark it mut because we'll append leaves later
+    /// CHECK: REAL SPL Concurrent Merkle Tree account (owned by the SPL
+    /// Account Compression program cmtDvXum…). We validate ownership in the
+    /// handler. Marked mut because we'll append leaves later.
     #[account(mut)]
     pub merkle_tree: UncheckedAccount<'info>,
 
@@ -46,13 +44,13 @@ pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
     // AccountInfo.owner is &Pubkey, so deref it for comparison.
     require_keys_eq!(
         *ctx.accounts.merkle_tree.owner,
-        CMT_ID,
+        CMT_ID
     );
 
     // Persist the tree so deposit() can enforce it later.
     ctx.accounts.config.merkle_tree = ctx.accounts.merkle_tree.key();
 
-    // Optional: log for sanity
+    // Optional: log for sanity.
     msg!("Initialized with Merkle tree = {}", ctx.accounts.merkle_tree.key());
     Ok(())
 }
