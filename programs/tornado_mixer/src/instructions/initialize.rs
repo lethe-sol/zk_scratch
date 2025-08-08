@@ -12,7 +12,7 @@ pub struct Initialize<'info> {
     /// CHECK: PDA signer for the Merkle tree authority; holds lamports and
     /// signs via seeds [b"vault"]. No data is stored in this account.
     #[account(
-        init,
+        init_if_needed,
         seeds = [b"vault"],
         bump,
         payer = payer,
@@ -28,7 +28,7 @@ pub struct Initialize<'info> {
 
     /// Stores the chosen Merkle tree pubkey for later use.
     #[account(
-        init,
+        init_if_needed,
         seeds = [b"config"],
         bump,
         payer = payer,
@@ -39,7 +39,7 @@ pub struct Initialize<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
+pub fn initialize(ctx: Context<Initialize>, _max_depth: u32, _max_buffer_size: u32) -> Result<()> {
     // Ensure this is an actual SPL CMT account (not our own PDA).
     // AccountInfo.owner is &Pubkey, so deref it for comparison.
     require_keys_eq!(
