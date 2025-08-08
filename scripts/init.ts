@@ -48,7 +48,7 @@ async function initialize() {
 
     const tx = await program.methods
       .initialize(MAX_DEPTH, MAX_BUFFER_SIZE)
-      .accounts({
+      .accountsPartial({
         payer: wallet.publicKey,
         vault: vaultPda,
         merkleTree: merkleTreePda,
