@@ -14,12 +14,14 @@ no-idl = []
 no-log-ix-name = []
 cpi = ["no-entrypoint"]
 default = []
-idl-build = ["anchor-lang/idl-build"]
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
 
 [dependencies]
-anchor-lang = { version = "0.31.1", features = ["idl-build"] }
-anchor-spl  = { version = "0.31.1", features = ["idl-build"] }
-spl-account-compression = { version = "0.3.0", features = ["cpi", "no-entrypoint"] } # add "anchor" if you actually need their derives
+anchor-lang = { workspace = true, features = ["idl-build"] }
+anchor-spl  = { workspace = true, features = ["idl-build"] }
+solana-program = { workspace = true }
+spl-noop = { workspace = true }
+spl-account-compression = { workspace = true }
 groth16-solana = { git = "https://github.com/Lightprotocol/groth16-solana.git" }
 bytemuck = "1.14"
 
