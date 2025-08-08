@@ -2,19 +2,18 @@ use anchor_lang::prelude::*;
 
 declare_id!("31zAuv25vz5tV8oiHuq49Zd827mNpbaaZ6P7da6hHB8g");
 
-// Your existing modules
+// your existing modules
 pub mod constants;
 pub mod errors;
-pub mod ix;            // keep your ix folder
+pub mod ix;
 pub mod state;
 pub mod verifying_key;
 
-// ---- Re-export shims so Anchor sees crate::deposit, crate::initialize, crate::withdraw
+// shims so Anchor sees crate::deposit / ::initialize / ::withdraw
 pub mod deposit { pub use crate::ix::deposit::*; }
 pub mod initialize { pub use crate::ix::initialize::*; }
 pub mod withdraw { pub use crate::ix::withdraw::*; }
 
-// Bring the context types into scope for #[program] fns
 use deposit::Deposit;
 use initialize::Initialize;
 use withdraw::Withdraw;
@@ -25,7 +24,6 @@ pub mod tornado_mixer {
     use anchor_lang::prelude::Result;
 
     pub fn initialize(ctx: Context<Initialize>, deposit_amount: u64) -> Result<()> {
-        // call your existing handler
         ix::initialize::initialize(ctx, deposit_amount)
     }
 
