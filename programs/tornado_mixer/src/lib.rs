@@ -1,3 +1,6 @@
+#[cfg(not(any(rust_2018, rust_2021)))]
+compile_error!("This crate is not compiling with Rust 2018+ edition.");
+
 use anchor_lang::prelude::*;
 
 declare_id!("31zAuv25vz5tV8oiHuq49Zd827mNpbaaZ6P7da6hHB8g");
