@@ -4,7 +4,7 @@ import { Connection, Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
 
 const PROGRAM_ID = new PublicKey("2xBPdkCzfwFdc6khqbvaAvYxWcKMRaueXeVyaLRoWDrN");
 
-const MAX_DEPTH = 20;  // Supports up to 2^20 = ~1M deposits
+const MAX_DEPTH = 14;  // Supports up to 2^14 = ~16K deposits (fits within account size limits)
 const MAX_BUFFER_SIZE = 64;  // Buffer for batching operations
 
 async function initialize() {
