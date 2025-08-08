@@ -6,9 +6,11 @@ members = [
 ]
 [workspace.dependencies]
 anchor-lang = "0.31.1"
-anchor-spl = "0.31.1"
-spl-account-compression = "=0.3.0"
+anchor-spl  = "0.31.1"
 
+solana-program = "1.18.18"
+spl-noop = "0.3.0"
+spl-account-compression = { version = "0.4.0", features = ["cpi"] }
 
 [profile.release]
 overflow-checks = true
