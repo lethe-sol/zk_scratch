@@ -90,6 +90,7 @@ pub mod tornado_mixer {
             require_eq!(
                 ser.len(),
                 CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1,
+                MixerError::InvalidState
             );
             header_bytes.copy_from_slice(&ser);
 
@@ -162,13 +163,15 @@ pub mod tornado_mixer {
         // 3) Pay out 0.1 SOL from the vault PDA to the recipient.
         let vault_bump = ctx.bumps.vault;
         let signer_seeds: &[&[u8]] = &[b"vault", &[vault_bump]];
+        let signer = &[signer_seeds]; // <-- fix lifetime of signer seeds
+
         let cpi = CpiContext::new_with_signer(
             ctx.accounts.system_program.to_account_info(),
             Transfer {
                 from: ctx.accounts.vault.to_account_info(),
                 to: ctx.accounts.recipient.to_account_info(),
             },
-            &[signer_seeds],
+            signer,
         );
         system_program::transfer(cpi, 100_000_000)?;
         Ok(())
