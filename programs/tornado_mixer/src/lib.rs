@@ -90,7 +90,6 @@ pub mod tornado_mixer {
             require_eq!(
                 ser.len(),
                 CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1,
-                MixerError::InvalidState
             );
             header_bytes.copy_from_slice(&ser);
 
