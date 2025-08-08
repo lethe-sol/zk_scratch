@@ -1,16 +1,11 @@
 [workspace]
 resolver = "2"
+members = ["programs/*"]
 
-members = [
-    "programs/*"
-]
 [workspace.dependencies]
 anchor-lang = "0.31.1"
 anchor-spl  = "0.31.1"
-
-# move to Solana 1.18 line to resolve ark-ff 0.4.2
-solana-program = "1.18.18"
-spl-noop = "0.3.0"
+# Move compression to the 1.18-era crate line
 spl-account-compression = { version = "0.4.0", features = ["cpi"] }
 
 [profile.release]
