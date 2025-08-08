@@ -1,18 +1,16 @@
 import * as anchor from "@coral-xyz/anchor";
-import { Connection, PublicKey, SystemProgram } from "@solana/web3.js";
+import { Connection, PublicKey, SystemProgram, Transaction, TransactionInstruction } from "@solana/web3.js";
+import crypto from "crypto";
+import fs from "fs";
+import path from "path";
 
 const PROGRAM_ID = new PublicKey("2xBPdkCzfwFdc6khqbvaAvYxWcKMRaueXeVyaLRoWDrN");
-const DEPOSIT_AMOUNT = 100_000_000; // 0.1 SOL in lamports
+const DEPOSIT_AMOUNT = 100_000_000; // 0.1 SOL (only relevant if your on-chain code transfers)
 
-// Hardcoded program IDs for State/Account Compression + Noop
-const SPL_ACCOUNT_COMPRESSION_PROGRAM_ID = new PublicKey(
-  "cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK"
-);
-const SPL_NOOP_PROGRAM_ID = new PublicKey(
-  "noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV"
-);
+const SPL_ACCOUNT_COMPRESSION_PROGRAM_ID = new PublicKey("cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK");
+const SPL_NOOP_PROGRAM_ID = new PublicKey("noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV");
 
-// Toy hash function (little-endian bytes)
+// Toy hash function (little-endian bytes) — unchanged
 function simpleHash(inputs: number[]): number[] {
   const p =
     21888242871839275222246405745257275088548364400416034343698204186575808495617n;
@@ -30,145 +28,70 @@ function simpleHash(inputs: number[]): number[] {
 
 async function deposit() {
   const connection = new Connection("https://api.devnet.solana.com", "confirmed");
-  const wallet = anchor.AnchorProvider.local().wallet;
-
-  const provider = new anchor.AnchorProvider(connection, wallet, {
-    commitment: "confirmed",
-  });
+  const provider = new anchor.AnchorProvider(
+    connection,
+    anchor.AnchorProvider.local().wallet,
+    { commitment: "confirmed" }
+  );
   anchor.setProvider(provider);
 
-  const fs = require("fs");
-  const path = require("path");
-  const idlPath = path.join(__dirname, "tornado_mixer.json");
-  const idlRaw = JSON.parse(fs.readFileSync(idlPath, "utf8"));
+  const wallet = provider.wallet.publicKey;
 
-  // ---- Force accounts to empty array to avoid old-IDL account.size crash ----
-  const idl = { ...idlRaw, accounts: [] } as any;
+  // Derive PDAs same as your current code
+  const [vaultPda] = PublicKey.findProgramAddressSync([Buffer.from("vault")], PROGRAM_ID);
+  const [merkleTreePda] = PublicKey.findProgramAddressSync([Buffer.from("tree")], PROGRAM_ID);
+  const [configPda] = PublicKey.findProgramAddressSync([Buffer.from("config")], PROGRAM_ID);
 
-  // Try newer Anchor ordering first, then fallback to older
-  const ProgramCtor: any = (anchor as any).Program;
-  let program: any;
-  try {
-    program = new ProgramCtor(idl, PROGRAM_ID, provider);
-  } catch {
-    program = new ProgramCtor(idl, provider, PROGRAM_ID);
-  }
+  // Build commitment & note info
+  const nullifier = Math.floor(Math.random() * 2 ** 30);
+  const secret = Math.floor(Math.random() * 2 ** 30);
+  const commitment = simpleHash([nullifier, secret]); // 32 byte number[]
+  const nullifierHash = simpleHash([nullifier]);
 
-  try {
-    const nullifier = Math.floor(Math.random() * 2 ** 30);
-    const secret = Math.floor(Math.random() * 2 ** 30);
+  console.log("🔐 commitment[0..8]:", commitment.slice(0, 8));
 
-    console.log("🔐 Generating commitment...");
-    console.log("Nullifier:", nullifier);
-    console.log("Secret:", secret);
+  // ---- Build raw instruction data: discriminator + commitment bytes ----
+  const disc = crypto.createHash("sha256").update("global:deposit").digest().slice(0, 8);
+  const data = Buffer.concat([disc, Buffer.from(commitment)]); // commitment length MUST be 32
 
-    const commitment = simpleHash([nullifier, secret]);
-    console.log("Commitment:", commitment.slice(0, 8).join(","), "... (32 bytes)");
+  // ---- Accounts: EXACT order from your IDL ----
+  const keys = [
+    { pubkey: wallet,                  isSigner: true,  isWritable: true  }, // user
+    { pubkey: configPda,               isSigner: false, isWritable: false }, // config
+    { pubkey: merkleTreePda,           isSigner: false, isWritable: true  }, // merkle_tree
+    { pubkey: vaultPda,                isSigner: false, isWritable: true  }, // vault
+    { pubkey: SPL_ACCOUNT_COMPRESSION_PROGRAM_ID, isSigner: false, isWritable: false }, // compression_program
+    { pubkey: SPL_NOOP_PROGRAM_ID,     isSigner: false, isWritable: false }, // noop_program
+    { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // system_program
+  ];
 
-    const nullifierHash = simpleHash([nullifier]);
-    console.log(
-      "Nullifier Hash:",
-      nullifierHash.slice(0, 8).join(","),
-      "... (32 bytes)"
-    );
+  const ix = new TransactionInstruction({
+    programId: PROGRAM_ID,
+    keys,
+    data,
+  });
 
-    const [vaultPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from("vault")],
-      PROGRAM_ID
-    );
-    const [merkleTreePda] = PublicKey.findProgramAddressSync(
-      [Buffer.from("tree")],
-      PROGRAM_ID
-    );
-    const [configPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from("config")],
-      PROGRAM_ID
-    );
+  const tx = new Transaction().add(ix);
+  const sig = await provider.sendAndConfirm(tx, [], { commitment: "confirmed" });
 
-    console.log("\n💰 Making deposit...");
-    console.log("Program ID:", PROGRAM_ID.toString());
-    console.log("Wallet:", wallet.publicKey.toString());
-    console.log("Vault PDA:", vaultPda.toString());
-    console.log("Merkle Tree PDA:", merkleTreePda.toString());
-    console.log("Config PDA:", configPda.toString());
-    console.log("Deposit Amount:", DEPOSIT_AMOUNT / 1e9, "SOL");
+  console.log("✅ Deposit sent:", sig);
 
-    const walletBalance = await connection.getBalance(wallet.publicKey);
-    console.log("Wallet balance before:", walletBalance / 1e9, "SOL");
-
-    if (walletBalance < DEPOSIT_AMOUNT + 5_000) {
-      throw new Error("Insufficient wallet balance for deposit + fees");
-    }
-
-    const accs = {
-      user: wallet.publicKey,
-      config: configPda,
-      merkleTree: merkleTreePda,
-      vault: vaultPda,
-      compressionProgram: SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
-      noopProgram: SPL_NOOP_PROGRAM_ID,
-      systemProgram: SystemProgram.programId,
-    };
-
-    console.log(
-      "\n📦 Accounts being sent to deposit():",
-      Object.fromEntries(Object.entries(accs).map(([k, v]) => [k, v.toBase58()]))
-    );
-
-    const tx = await program.methods.deposit(commitment).accounts(accs).rpc();
-
-    console.log("✅ Deposit successful!");
-    console.log("Transaction signature:", tx);
-
-    // Check for CPIs to compression + noop
-    const parsed = await connection.getTransaction(tx, {
-      maxSupportedTransactionVersion: 0,
-      commitment: "confirmed",
-    });
-    const programIds =
-      parsed?.meta?.innerInstructions
-        ?.flatMap((ii: any) =>
-          ii.instructions.map(
-            (ix: any) =>
-              parsed.transaction.message.staticAccountKeys[ix.programIdIndex].toBase58()
-          )
-        ) || [];
-    const sawCompression = programIds.includes(
-      SPL_ACCOUNT_COMPRESSION_PROGRAM_ID.toBase58()
-    );
-    const sawNoop = programIds.includes(SPL_NOOP_PROGRAM_ID.toBase58());
-    console.log(
-      `🔎 Inner CPI → compression: ${sawCompression ? "yes" : "no"}, noop: ${
-        sawNoop ? "yes" : "no"
-      }`
-    );
-
-    const walletBalanceAfter = await connection.getBalance(wallet.publicKey);
-    const vaultBalanceAfter = await connection.getBalance(vaultPda);
-
-    console.log("\n📊 Balances after deposit:");
-    console.log("Wallet balance:", walletBalanceAfter / 1e9, "SOL");
-    console.log("Vault balance:", vaultBalanceAfter / 1e9, "SOL");
-
-    const depositInfo = {
-      nullifier,
-      secret,
-      commitment,
-      nullifierHash,
-      transactionSignature: tx,
-      timestamp: new Date().toISOString(),
-      note:
-        "⚠️ Toy hash for testing. Use Poseidon consistent with your circuit before wiring withdraw.",
-    };
-
-    const depositInfoPath = path.join(__dirname, `deposit_${Date.now()}.json`);
-    fs.writeFileSync(depositInfoPath, JSON.stringify(depositInfo, null, 2));
-    console.log("\n💾 Deposit info saved to:", depositInfoPath);
-    console.log("⚠️ Keep this file safe - you'll need it for withdrawal!");
-    console.log("⚠️ Note: ensure tree depth/buffer match your circuit (e.g., depth=20).");
-  } catch (error) {
-    console.error("❌ Deposit failed:", error);
-  }
+  // Save a note file (like before)
+  const out = {
+    nullifier,
+    secret,
+    commitment,
+    nullifierHash,
+    tx: sig,
+    timestamp: new Date().toISOString(),
+    note: "Toy hash only. Swap to Poseidon to match circuit before withdraw.",
+  };
+  const fp = path.join(__dirname, `deposit_${Date.now()}.json`);
+  fs.writeFileSync(fp, JSON.stringify(out, null, 2));
+  console.log("💾 Saved:", fp);
 }
 
-deposit().catch(console.error);
+deposit().catch((e) => {
+  console.error("❌ Deposit failed:", e);
+  process.exit(1);
+});
