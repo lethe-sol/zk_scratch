@@ -10,7 +10,7 @@ use instructions::*;
 use state::*;
 use errors::*;
 
-declare_id!("MixEr111111111111111111111111111111111111111"); // Program ID (replace with actual)
+declare_id!("31zAuv25vz5tV8oiHuq49Zd827mNpbaaZ6P7da6hHB8g"); // Program ID (replace with actual)
 
 #[program]
 pub mod mixer {
