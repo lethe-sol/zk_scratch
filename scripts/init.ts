@@ -51,9 +51,9 @@ async function initialize() {
       .accounts({
         payer: wallet.publicKey,
         vault: vaultPda,
-        merkleTree: merkleTreePda,
+        merkle_tree: merkleTreePda,
         config: configPda,
-        systemProgram: SystemProgram.programId,
+        system_program: SystemProgram.programId,
       })
       .rpc();
 
