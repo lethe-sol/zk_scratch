@@ -152,7 +152,7 @@ async function deposit() {
       "⚠️ Note: Current merkle tree depth (6) doesn't match circuit depth (20)"
     );
   } catch (error) {
-    console.error("❌ Deposit failed:", error);
+    console.error("❌ Deposit b failed:", error);
   }
 }
 
