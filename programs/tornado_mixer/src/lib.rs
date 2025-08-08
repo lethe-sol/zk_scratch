@@ -2,18 +2,21 @@ use anchor_lang::prelude::*;
 
 declare_id!("31zAuv25vz5tV8oiHuq49Zd827mNpbaaZ6P7da6hHB8g");
 
-// your existing modules
+// Make `crate::...` paths work even if the compiler treats this as 2015 edition.
+extern crate self as crate;
+
 pub mod constants;
 pub mod errors;
-pub mod ix;
+pub mod ix;            // keep your ix folder
 pub mod state;
 pub mod verifying_key;
 
-// shims so Anchor sees crate::deposit / ::initialize / ::withdraw
+// ---- Shims so the Anchor macro can import `crate::deposit`, etc.
 pub mod deposit { pub use crate::ix::deposit::*; }
 pub mod initialize { pub use crate::ix::initialize::*; }
 pub mod withdraw { pub use crate::ix::withdraw::*; }
 
+// Bring context types into scope
 use deposit::Deposit;
 use initialize::Initialize;
 use withdraw::Withdraw;
