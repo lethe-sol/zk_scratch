@@ -2,19 +2,18 @@ use anchor_lang::prelude::*;
 
 declare_id!("31zAuv25vz5tV8oiHuq49Zd827mNpbaaZ6P7da6hHB8g");
 
-
 pub mod constants;
 pub mod errors;
-pub mod ix;            // keep your ix folder
+pub mod ix;            // your instruction files are in here
 pub mod state;
 pub mod verifying_key;
 
-// ---- Shims so the Anchor macro can import `crate::deposit`, etc.
+// Create root-level modules that re-export the real instruction modules
 pub mod deposit { pub use crate::ix::deposit::*; }
 pub mod initialize { pub use crate::ix::initialize::*; }
 pub mod withdraw { pub use crate::ix::withdraw::*; }
 
-// Bring context types into scope
+// Bring the context types into scope for #[program]
 use deposit::Deposit;
 use initialize::Initialize;
 use withdraw::Withdraw;
