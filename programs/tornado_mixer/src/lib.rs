@@ -15,13 +15,14 @@ pub mod tornado_mixer {
     use super::*;
 
     pub fn initialize(ctx: Context<Initialize>, deposit_amount: u64) -> Result<()> {
-        instructions::initialize::initialize(ctx, deposit_amount)
+        instructions::initialize(ctx, deposit_amount)
 
     }
 
     pub fn deposit(ctx: Context<Deposit>, commitment: [u8; 32]) -> Result<()> {
-        instructions::deposit::deposit(ctx, commitment)
-    }
+        instructions::deposit(ctx, commitment)
+}
+
 
     pub fn withdraw(
         ctx: Context<Withdraw>,
@@ -30,7 +31,7 @@ pub mod tornado_mixer {
         nullifier_hash: [u8; 32],
         recipient: Pubkey,
     ) -> Result<()> {
-        instructions::withdraw::withdraw(ctx, proof, root, nullifier_hash, recipient)
+        instructions::withdraw(ctx, proof, root, nullifier_hash, recipient)
     
     }
 }
