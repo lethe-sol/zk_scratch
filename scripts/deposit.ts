@@ -9,6 +9,7 @@ import {
 const PROGRAM_ID = new PublicKey("2xBPdkCzfwFdc6khqbvaAvYxWcKMRaueXeVyaLRoWDrN");
 const DEPOSIT_AMOUNT = 100_000_000; // 0.1 SOL in lamports
 
+// Toy hash -> 32 bytes (LE). Keep endian consistent with your circuit or switch to BE everywhere.
 function simpleHash(inputs: number[]): number[] {
   const p =
     21888242871839275222246405745257275088548364400416034343698204186575808495617n;
@@ -16,7 +17,6 @@ function simpleHash(inputs: number[]): number[] {
   for (let i = 0; i < inputs.length; i++) {
     h = (h + BigInt(inputs[i]) * BigInt(i + 1)) % p;
   }
-  // LITTLE-endian bytes (keep consistent with your circuit or swap to BE)
   const out = new Array<number>(32).fill(0);
   for (let i = 0; i < 32; i++) {
     out[i] = Number(h & 0xffn);
@@ -39,8 +39,8 @@ async function deposit() {
   const idlPath = path.join(__dirname, "tornado_mixer.json");
   const idl = JSON.parse(fs.readFileSync(idlPath, "utf8"));
 
-  // IMPORTANT: pass PROGRAM_ID, not provider
-  const program = new anchor.Program(idl, PROGRAM_ID, provider) as Program;
+  // Your installed Anchor typings expect (idl, provider, programId)
+  const program = new anchor.Program(idl, provider, PROGRAM_ID) as Program;
 
   try {
     const nullifier = Math.floor(Math.random() * 2 ** 30);
@@ -84,7 +84,7 @@ async function deposit() {
     const walletBalance = await connection.getBalance(wallet.publicKey);
     console.log("Wallet balance before:", walletBalance / 1e9, "SOL");
 
-    if (walletBalance < DEPOSIT_AMOUNT + 5000) {
+    if (walletBalance < DEPOSIT_AMOUNT + 5_000) {
       throw new Error("Insufficient wallet balance for deposit + fees");
     }
 
@@ -113,7 +113,8 @@ async function deposit() {
       parsed?.meta?.innerInstructions
         ?.flatMap((ii: any) =>
           ii.instructions.map(
-            (ix: any) => parsed.transaction.message.staticAccountKeys[ix.programIdIndex].toBase58()
+            (ix: any) =>
+              parsed.transaction.message.staticAccountKeys[ix.programIdIndex].toBase58()
           )
         ) || [];
     const sawCompression = programIds.includes(
@@ -148,11 +149,9 @@ async function deposit() {
     fs.writeFileSync(depositInfoPath, JSON.stringify(depositInfo, null, 2));
     console.log("\n💾 Deposit info saved to:", depositInfoPath);
     console.log("⚠️ Keep this file safe - you'll need it for withdrawal!");
-    console.log(
-      "⚠️ Note: Current merkle tree depth (6) doesn't match circuit depth (20)"
-    );
+    console.log("⚠️ Note: ensure tree depth/buffer match your circuit (e.g., depth=20).");
   } catch (error) {
-    console.error("❌ Deposit b failed:", error);
+    console.error("❌ Deposit failed:", error);
   }
 }
 
