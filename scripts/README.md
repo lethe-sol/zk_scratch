@@ -61,6 +61,32 @@ npx ts-node scripts/deposit.ts
 - Current implementation uses simple hash for testing (not production Poseidon)
 - Merkle tree depth mismatch: on-chain (6) vs circuits (20) - will need resolution for withdrawals
 
+### withdraw.ts
+Tests withdrawal functionality using mock proofs (since circuits are for depth 20 but tree is depth 6):
+- Loads the most recent deposit file
+- Generates mock Groth16 proof and merkle root
+- Tests withdrawal instruction parameter encoding
+- Validates nullifier PDA creation
+- Expected to fail with "InvalidProof" but confirms instruction structure works
+
+**Usage:**
+```bash
+# From project root (requires prior deposit)
+npx ts-node scripts/withdraw.ts
+```
+
+**Important Notes:**
+- Requires a deposit file from previous `deposit.ts` run
+- Uses mock proofs since circuits expect depth 20 but tree is depth 6
+- Tests instruction flow and parameter validation
+- Will fail with "InvalidProof" error (expected behavior)
+- Saves withdrawal attempt info for debugging
+
+**Expected Output:**
+- ✅ Parameter encoding validation successful
+- ⚠️ "InvalidProof" error (expected with mock proof)
+- 💾 Withdrawal attempt info saved to file
+
 **Configuration:**
 - Max Depth: 6 (supports 64 deposits)
 - Max Buffer Size: 16 (batching operations)
