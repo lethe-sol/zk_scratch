@@ -22,7 +22,6 @@ anchor-spl  = { workspace = true, features = ["idl-build"] }
 spl-account-compression = { workspace = true }
 groth16-solana = { git = "https://github.com/Lightprotocol/groth16-solana.git" }
 bytemuck = "1.14"
-spl-noop = { workspace = true }
 
 [dev-dependencies]
 tokio = { version = "1.0", features = ["macros"] }
