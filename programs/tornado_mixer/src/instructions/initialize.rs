@@ -7,18 +7,20 @@ pub struct Initialize<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
 
-    /// Vault PDA (authority of the tree, holds the pool lamports)
+    /// CHECK: Vault is a PDA derived by seeds [b"vault"]; we don't read/write any data on it,
+    /// it only holds lamports and signs via seeds in handlers.
     #[account(
         init,
         seeds = [b"vault"],
         bump,
         payer = payer,
-        space = 8 // discriminator only; we don't store data in it
+        space = 8 // discriminator only; no data stored
     )]
     pub vault: UncheckedAccount<'info>,
 
-    /// Merkle tree PDA (created in handler with dynamic size)
-    /// CHECK: Created with system_instruction::create_account; owned by this program.
+    /// CHECK: Merkle tree is a PDA derived by [b"tree"]; created and owned by this program.
+    /// Size and header are validated in the handler before use; we only write the header
+    /// and tree bytes via SPL account-compression wrappers.
     #[account(
         mut,
         seeds = [b"tree"],
@@ -26,7 +28,6 @@ pub struct Initialize<'info> {
     )]
     pub merkle_tree: UncheckedAccount<'info>,
 
-    /// Config PDA storing the tree pubkey
     #[account(
         init,
         seeds = [b"config"],
