@@ -19,15 +19,9 @@ idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
 [dependencies]
 anchor-lang = { workspace = true, features = ["idl-build"] }
 anchor-spl  = { workspace = true, features = ["idl-build"] }
-solana-program = { workspace = true }
-spl-noop = { workspace = true }
 spl-account-compression = { workspace = true }
 groth16-solana = { git = "https://github.com/Lightprotocol/groth16-solana.git" }
 bytemuck = "1.14"
 
 [dev-dependencies]
 tokio = { version = "1.0", features = ["macros"] }
-
-[profile.release]
-overflow-checks = true
-
