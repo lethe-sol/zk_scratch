@@ -1,122 +1,36 @@
 use anchor_lang::prelude::*;
-use groth16_solana::groth16::Groth16Verifier;
-use crate::{constants::*, errors::TornadoError, state::*, verifying_key::get_verifying_key};
+use crate::state::{MixerConfig, NullifierState};
 
 #[derive(Accounts)]
-#[instruction(nullifier_hash: [u8; 32])]
 pub struct Withdraw<'info> {
+    // The signer paying for this transaction (could be the recipient or a relayer; must sign to cover fees)
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    pub config: Account<'info, MixerConfig>,
+    /// CHECK: Merkle tree account (must match config)
+    #[account(
+        address = config.merkle_tree
+    )]
+    pub merkle_tree: UncheckedAccount<'info>,
+    /// CHECK: Vault PDA (pool account) holding funds
     #[account(
         mut,
-        seeds = [STATE_SEED],
-        bump = vault_state.bump
+        seeds = [b"vault"],
+        bump
     )]
-    pub vault_state: Account<'info, VaultState>,
-
+    pub vault: UncheckedAccount<'info>,
+    // Nullifier PDA: will be created to mark this nullifier as spent
     #[account(
         init,
-        payer = withdrawer,
-        space = NullifierPDA::LEN,
-        seeds = [NULLIFIER_SEED, &nullifier_hash],
-        bump
+        seeds = [b"nullifier", nullifier_hash.as_ref()], 
+        bump,
+        payer = payer,
+        space = 8,       // only needs 8 bytes for discriminator (no fields)
+        owner = program_id
     )]
-    pub nullifier_pda: Account<'info, NullifierPDA>,
-
-    #[account(
-        mut,
-        seeds = [VAULT_SEED],
-        bump
-    )]
-    pub vault: SystemAccount<'info>,
-
+    pub nullifier: Account<'info, NullifierState>,
+    /// Recipient of the withdrawn funds
     #[account(mut)]
-    pub recipient: UncheckedAccount<'info>,
-
-    #[account(mut)]
-    pub withdrawer: Signer<'info>,
-
+    pub recipient: SystemAccount<'info>,
     pub system_program: Program<'info, System>,
-}
-
-pub fn withdraw(
-    ctx: Context<Withdraw>,
-    proof: [u8; 256],
-    root: [u8; 32],
-    nullifier_hash: [u8; 32],
-    recipient: Pubkey,
-) -> Result<()> {
-    let vault_state = &mut ctx.accounts.vault_state;
-    let nullifier_pda = &mut ctx.accounts.nullifier_pda;
-
-    require!(
-        vault_state.is_valid_root(&root),
-        TornadoError::InvalidMerkleRoot
-    );
-
-    let public_inputs = prepare_public_inputs(&root, &nullifier_hash, &recipient)?;
-    
-    let proof_a: [u8; 64] = proof[0..64].try_into().unwrap();
-    let proof_b: [u8; 128] = proof[64..192].try_into().unwrap(); 
-    let proof_c: [u8; 64] = proof[192..256].try_into().unwrap();
-    
-    let verifying_key = get_verifying_key();
-    let mut verifier = Groth16Verifier::new(
-        &proof_a,
-        &proof_b, 
-        &proof_c,
-        &public_inputs,
-        &verifying_key,
-    ).map_err(|_| TornadoError::InvalidProof)?;
-    
-    require!(
-        verifier.verify().is_ok(),
-        TornadoError::InvalidProof
-    );
-
-    nullifier_pda.nullifier_hash = nullifier_hash;
-    nullifier_pda.bump = ctx.bumps.nullifier_pda;
-
-    let vault_balance = ctx.accounts.vault.lamports();
-    let withdraw_amount = vault_state.deposit_amount;
-    
-    require!(
-        vault_balance >= withdraw_amount,
-        TornadoError::InsufficientVaultBalance
-    );
-
-    let vault_seeds = &[VAULT_SEED, &[ctx.bumps.vault]];
-    let _signer_seeds = &[&vault_seeds[..]];
-
-    **ctx.accounts.vault.try_borrow_mut_lamports()? -= withdraw_amount;
-    **ctx.accounts.recipient.try_borrow_mut_lamports()? += withdraw_amount;
-
-    vault_state.total_withdrawals = vault_state
-        .total_withdrawals
-        .checked_add(1)
-        .ok_or(TornadoError::ArithmeticOverflow)?;
-
-    msg!(
-        "Withdrawal successful: nullifier_hash={:?}, recipient={}, amount={}",
-        nullifier_hash,
-        recipient,
-        withdraw_amount
-    );
-
-    Ok(())
-}
-
-fn prepare_public_inputs(
-    root: &[u8; 32],
-    nullifier_hash: &[u8; 32],
-    recipient: &Pubkey,
-) -> Result<[[u8; 32]; 7]> {
-    let mut public_inputs = [[0u8; 32]; 7];
-    
-    public_inputs[0] = *root;
-    public_inputs[1] = *nullifier_hash;
-    
-    let recipient_bytes = recipient.to_bytes();
-    public_inputs[2][0..16].copy_from_slice(&recipient_bytes[0..16]);
-    public_inputs[3][0..16].copy_from_slice(&recipient_bytes[16..32]);
-    
-    Ok(public_inputs)
 }
