@@ -87,7 +87,7 @@ pub mod tornado_mixer {
     /// Public inputs expected by the VK/circuit (order matters):
     ///  1) root
     ///  2) nullifierHash
-    ///  3) recipient_1  (first 16B of recipient pubkey, as a 32B BE field elem)
+    ///  3) recipient_1  (first 16B of recipient pubkey, encoded as 32B BE field)
     ///  4) recipient_2  (last 16B)
     ///  5) relayer_1    (0 for now)
     ///  6) relayer_2    (0 for now)
@@ -136,20 +136,18 @@ pub mod tornado_mixer {
             relayer_2,
             fee_fe,
         ];
-        let public_inputs_refs: Vec<&[u8;32]> = public_inputs.iter().collect();
 
         // --- verify Groth16 proof against the embedded VK ---
         let mut verifier = Groth16Verifier::new(
             &proof_a,
             &proof_b,
             &proof_c,
-            public_inputs_refs.as_slice(),
+            &public_inputs, // <- pass the array directly
             &VERIFYING_KEY,
         ).map_err(|_| MixerError::InvalidProof)?;
         verifier.verify().map_err(|_| MixerError::InvalidProof)?;
 
         // TODO (soon): require! that `root` ∈ accepted roots window kept in `config`
-        // TODO (soon): additional checks/telemetry if needed
 
         // Payout fixed denomination from vault PDA to recipient
         const WITHDRAW_LAMPORTS: u64 = 100_000_000;
