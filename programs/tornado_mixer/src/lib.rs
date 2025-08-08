@@ -11,103 +11,66 @@ use state::*;
 use errors::*;
 use verifying_key::VERIFYING_KEY;
 
-// SPL compression: header + size calc + wrappers
-use spl_account_compression::state::{
-    ConcurrentMerkleTreeHeader,
-    CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1,
-    merkle_tree_get_size,
-};
-use spl_account_compression::concurrent_tree_wrapper::{
-    merkle_tree_initialize_empty,
-    merkle_tree_append_leaf,
-};
+use spl_account_compression::{program::SplAccountCompression, Noop, ID as CMT_ID};
+use spl_noop::ID as NOOP_ID;
 
-declare_id!("2xBPdkCzfwFdc6khqbvaAvYxWcKMRaueXeVyaLRoWDrN"); // replace with your real program id
+declare_id!("2xBPdkCzfwFdc6khqbvaAvYxWcKMRaueXeVyaLRoWDrN");
 
 #[program]
 pub mod tornado_mixer {
     use super::*;
 
-    // Create+init the Merkle tree owned by THIS program, plus the vault + config.
+    /// Initialize the mixer:
+    /// - Creates the `vault` PDA (authority for the Merkle tree)
+    /// - Accepts a **real SPL CMT** account (already created off-chain)
+    /// - Stores the tree pubkey in `config`
+    ///
+    /// We keep the args to avoid IDL changes, but they are unused now.
     pub fn initialize(
         ctx: Context<Initialize>,
-        max_depth: u32,
-        max_buffer_size: u32,
+        _max_depth: u32,
+        _max_buffer_size: u32,
     ) -> Result<()> {
-        use spl_account_compression::state::{
-            ConcurrentMerkleTreeHeader,
-            CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1,
-            merkle_tree_get_size,
-        };
-        use spl_account_compression::concurrent_tree_wrapper::merkle_tree_initialize_empty;
-
-        // 1) Start from a zeroed header, then initialize it
-        let mut header = ConcurrentMerkleTreeHeader::try_from_slice(
-            &[0u8; CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1]
-        )?;
-        header.initialize(
-            max_depth,
-            max_buffer_size,
-            &ctx.accounts.vault.key(),    // vault is the authority
-            Clock::get()?.slot,
+        // Must be an SPL CMT account (owned by cmtDvXum…)
+        require_keys_eq!(
+            *ctx.accounts.merkle_tree.owner,
+            CMT_ID,
+            TornadoError::InvalidOwner
         );
-        header.assert_valid()?; // enforces allowed (depth, buffer) pairs
 
-        // 2) Compute dynamic tree size and total space
-        let tree_size = merkle_tree_get_size(&header)? as usize;
-        let space = CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1 + tree_size;
+        // Persist the tree so deposit() can validate against it later.
+        ctx.accounts
+            .config
+            .set_inner(MixerConfig { merkle_tree: ctx.accounts.merkle_tree.key() });
 
-        // 3) Create the merkle_tree PDA account if needed
-        if ctx.accounts.merkle_tree.data_is_empty() {
-            let lamports = Rent::get()?.minimum_balance(space);
-            let seeds = &[b"tree".as_ref(), &[ctx.bumps.merkle_tree]];
-            let signer = &[&seeds[..]];
-            let ix = anchor_lang::solana_program::system_instruction::create_account(
-                &ctx.accounts.payer.key(),
-                &ctx.accounts.merkle_tree.key(),
-                lamports,
-                space as u64,
-                ctx.program_id,
-            );
-            anchor_lang::solana_program::program::invoke_signed(
-                &ix,
-                &[
-                    ctx.accounts.payer.to_account_info(),
-                    ctx.accounts.merkle_tree.to_account_info(),
-                    ctx.accounts.system_program.to_account_info(),
-                ],
-                signer,
-            )?;
-        }
-
-        // 4) Write header and initialize empty tree bytes in-place
-        {
-            let mut data = ctx.accounts.merkle_tree.try_borrow_mut_data()?;
-            let (header_bytes, tree_bytes) =
-                data.split_at_mut(CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1);
-
-            let ser = header.try_to_vec()?;
-            require_eq!(
-                ser.len(),
-                CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1,
-            );
-            header_bytes.copy_from_slice(&ser);
-
-            // Build the empty tree
-            merkle_tree_initialize_empty(&header, ctx.accounts.merkle_tree.key(), tree_bytes)?;
-        }
-
-        // 5) Persist the tree pubkey
-        ctx.accounts.config.merkle_tree = ctx.accounts.merkle_tree.key();
+        msg!("Initialized with Merkle tree = {}", ctx.accounts.merkle_tree.key());
         Ok(())
     }
 
-    // User sends 0.1 SOL to the vault; we append their commitment as a new leaf.
+    /// User sends 0.1 SOL to the vault; we append their commitment as a new leaf
+    /// using a CPI to SPL Account Compression.
     pub fn deposit(ctx: Context<Deposit>, commitment: [u8; 32]) -> Result<()> {
-        // 0.1 SOL in lamports
-        let deposit_amount: u64 = 100_000_000;
+        // Sanity checks so bad clients fail loudly.
+        require_keys_eq!(
+            ctx.accounts.compression_program.key(),
+            CMT_ID,
+            TornadoError::InvalidCompressionProgram
+        );
+        require_keys_eq!(
+            ctx.accounts.noop_program.key(),
+            NOOP_ID,
+            TornadoError::InvalidNoopProgram
+        );
+        require_keys_eq!(
+            ctx.accounts.merkle_tree.key(),
+            ctx.accounts.config.merkle_tree,
+            TornadoError::WrongTree
+        );
 
-        // Transfer SOL user -> vault (system_program CPI)
+        // 0.1 SOL in lamports
+        const DEPOSIT_LAMPORTS: u64 = 100_000_000;
+
+        // Transfer SOL user -> vault
         let cpi = CpiContext::new(
             ctx.accounts.system_program.to_account_info(),
             Transfer {
@@ -115,25 +78,30 @@ pub mod tornado_mixer {
                 to: ctx.accounts.vault.to_account_info(),
             },
         );
-        system_program::transfer(cpi, deposit_amount)?; // standard way to move SOL in Anchor.
+        system_program::transfer(cpi, DEPOSIT_LAMPORTS)?;
 
-        // Append commitment to the tree (read header from account)
-        let mut data = ctx.accounts.merkle_tree.try_borrow_mut_data()?;
-        let (header_bytes, tree_bytes) =
-            data.split_at_mut(CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1);
-        let header = ConcurrentMerkleTreeHeader::try_from_slice(header_bytes)?;
-        header.assert_valid_authority(&ctx.accounts.vault.key())?;
+        // Append commitment to the SPL-owned tree (authority = vault PDA)
+        let accounts = spl_account_compression::cpi::accounts::Modify {
+            merkle_tree: ctx.accounts.merkle_tree.to_account_info(),
+            authority:   ctx.accounts.vault.to_account_info(),
+            noop:        ctx.accounts.noop_program.to_account_info(),
+        };
 
-        merkle_tree_append_leaf(
-            &header,
-            ctx.accounts.merkle_tree.key(),
-            tree_bytes,
-            &commitment,
+        // Sign with the vault seeds
+        let signer_seeds: &[&[u8]] = &[b"vault", &[ctx.bumps.vault]];
+        spl_account_compression::cpi::append(
+            CpiContext::new_with_signer(
+                ctx.accounts.compression_program.to_account_info(),
+                accounts,
+                &[signer_seeds],
+            ),
+            commitment,
         )?;
+
         Ok(())
     }
 
-    // Withdraw 0.1 SOL with a valid Groth16 proof. Public inputs are [root, nullifier].
+    /// Withdraw 0.1 SOL with a valid Groth16 proof. Public inputs are [root, nullifier].
     pub fn withdraw(
         ctx: Context<Withdraw>,
         proof: [u8; 256],
@@ -157,12 +125,12 @@ pub mod tornado_mixer {
         ).map_err(|_| MixerError::InvalidProof)?;
         verifier.verify().map_err(|_| MixerError::InvalidProof)?;
 
-        // 2) (Nullifier PDA is created by the Accounts context; if it already exists, init fails)
+        // 2) TODO: Nullifier handling (ensure one-time spend)
 
         // 3) Pay out 0.1 SOL from the vault PDA to the recipient.
-        let vault_bump = ctx.bumps.vault;
-        let signer_seeds: &[&[u8]] = &[b"vault", &[vault_bump]];
-        let signer = &[signer_seeds]; // <-- fix lifetime of signer seeds
+        const WITHDRAW_LAMPORTS: u64 = 100_000_000;
+        let signer_seeds: &[&[u8]] = &[b"vault", &[ctx.bumps.vault]];
+        let signer = &[signer_seeds];
 
         let cpi = CpiContext::new_with_signer(
             ctx.accounts.system_program.to_account_info(),
@@ -172,7 +140,7 @@ pub mod tornado_mixer {
             },
             signer,
         );
-        system_program::transfer(cpi, 100_000_000)?;
+        system_program::transfer(cpi, WITHDRAW_LAMPORTS)?;
         Ok(())
     }
 }
