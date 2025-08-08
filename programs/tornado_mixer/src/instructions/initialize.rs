@@ -1,50 +1,46 @@
 use anchor_lang::prelude::*;
-use crate::{constants::*, errors::TornadoError, state::*};
+use crate::state::MixerConfig;
 
 #[derive(Accounts)]
+#[instruction(max_depth: u32, max_buffer_size: u32)]
 pub struct Initialize<'info> {
+    // Merkle tree account (to store the concurrent Merkle tree state)
     #[account(
-        init,
-        payer = authority,
-        space = VaultState::LEN,
-        seeds = [STATE_SEED],
-        bump
+        init, 
+        space = 8 + spl_account_compression::state::CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1 + 
+                spl_account_compression::state::get_tree_data_size(max_depth, max_buffer_size, 0).unwrap(), 
+        payer = payer, 
+        owner = ACCOUNT_COMPRESSION_ID
     )]
-    pub vault_state: Account<'info, VaultState>,
-
     pub merkle_tree: UncheckedAccount<'info>,
-
+    // Vault PDA to hold pooled funds and act as tree authority
     #[account(
-        mut,
-        seeds = [VAULT_SEED],
-        bump
+        init, 
+        seeds = [b"vault"], 
+        bump, 
+        payer = payer, 
+        space = 0, 
+        owner = program_id
     )]
-    pub vault: SystemAccount<'info>,
-
+    pub vault: UncheckedAccount<'info>,
+    // Config PDA to store tree pubkey
+    #[account(
+        init, 
+        seeds = [b"config"], 
+        bump, 
+        payer = payer, 
+        space = 8 + 32, 
+        owner = program_id
+    )]
+    pub config: Account<'info, MixerConfig>,
+    /// CHECK: The Address of the SPL Account Compression program (for CPI)
+    #[account(address = ACCOUNT_COMPRESSION_ID)]
+    pub compression_program: UncheckedAccount<'info>,
+    /// CHECK: The Address of the Noop program (for CPI logging)
+    #[account(address = NOOP_PROGRAM_ID)]
+    pub noop_program: UncheckedAccount<'info>,
     #[account(mut)]
-    pub authority: Signer<'info>,
-
+    pub payer: Signer<'info>,
     pub system_program: Program<'info, System>,
-}
-
-pub fn initialize(ctx: Context<Initialize>, deposit_amount: u64) -> Result<()> {
-    let vault_state = &mut ctx.accounts.vault_state;
-
-    require!(
-        deposit_amount == DEPOSIT_AMOUNT,
-        TornadoError::InvalidDepositAmount
-    );
-
-    vault_state.merkle_tree = ctx.accounts.merkle_tree.key();
-    vault_state.recent_roots = [None; MAX_RECENT_ROOTS];
-    vault_state.recent_roots_index = 0;
-    vault_state.deposit_amount = deposit_amount;
-    vault_state.total_deposits = 0;
-    vault_state.total_withdrawals = 0;
-    vault_state.authority = ctx.accounts.authority.key();
-    vault_state.bump = ctx.bumps.vault_state;
-
-    msg!("Tornado mixer initialized with deposit amount: {} lamports", deposit_amount);
-
-    Ok(())
+    // Rent sysvar is implicitly required by Anchor for init (no need to declare explicitly in Anchor 0.31+)
 }
