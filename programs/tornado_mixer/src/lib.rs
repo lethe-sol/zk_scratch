@@ -4,7 +4,7 @@ declare_id!("31zAuv25vz5tV8oiHuq49Zd827mNpbaaZ6P7da6hHB8g");
 
 pub mod constants;
 pub mod errors;
-pub mod instructions;
+pub mod instructions; // MUST be public so Anchor can find it
 pub mod state;
 pub mod verifying_key;
 
