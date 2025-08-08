@@ -1,3 +1,8 @@
+use anchor_lang::prelude::*;
+use anchor_lang::system_program;
+use spl_account_compression::cpi::append;
+use crate::{constants::*, errors::TornadoError, state::*};
+
 #[derive(Accounts)]
 pub struct Deposit<'info> {
     #[account(
