@@ -7,7 +7,6 @@ anchor-lang = { version = "0.31.1", features = ["init-if-needed"] }
 anchor-spl  = "0.31.1"
 # Move compression to the 1.18-era crate line
 spl-account-compression = { version = "1.0.0", features = ["cpi", "idl-build"] }
-spl-noop = { version = "1.0.0" }
 [profile.release]
 overflow-checks = true
 lto = "fat"
