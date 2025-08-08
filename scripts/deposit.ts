@@ -6,9 +6,10 @@ const PROGRAM_ID = new PublicKey("2xBPdkCzfwFdc6khqbvaAvYxWcKMRaueXeVyaLRoWDrN")
 const DEPOSIT_AMOUNT = 100_000_000; // 0.1 SOL in lamports
 
 function simpleHash(inputs: number[]): string {
-  let hash = 0;
+  const fieldModulus = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
+  let hash = 0n;
   for (let i = 0; i < inputs.length; i++) {
-    hash = (hash + inputs[i] * (i + 1)) % 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
+    hash = (hash + BigInt(inputs[i]) * BigInt(i + 1)) % fieldModulus;
   }
   return hash.toString();
 }
