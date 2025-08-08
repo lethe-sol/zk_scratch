@@ -1,12 +1,12 @@
 use anchor_lang::prelude::*;
 use anchor_lang::system_program;
-
+use spl_noop::noop;
 use crate::state::MixerConfig;
 
 // SPL State/Account Compression + noop (log wrapper)
 use spl_account_compression::program::SplAccountCompression;
 use spl_account_compression::cpi::{accounts::Modify, append};
-use spl_noop::noop;
+use spl_account_compression::Noop;
 #[derive(Accounts)]
 pub struct Deposit<'info> {
     /// Payer; funds move from here into the vault PDA
