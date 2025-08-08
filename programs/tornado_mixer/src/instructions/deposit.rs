@@ -8,14 +8,16 @@ pub struct Deposit<'info> {
 
     pub config: Account<'info, MixerConfig>,
 
-    /// CHECK: Must be the same tree recorded in config
+    /// CHECK: Must equal config.merkle_tree; header validity is asserted in the handler
+    /// before modifying tree bytes. We only use it to read header and append a leaf.
     #[account(
         mut,
         address = config.merkle_tree
     )]
     pub merkle_tree: UncheckedAccount<'info>,
 
-    /// Vault PDA (pool)
+    /// CHECK: Vault is the PDA [b"vault"]; we don't access any account data, only lamports.
+    /// It also serves as authority for the tree and signs via seeds in handlers.
     #[account(
         mut,
         seeds = [b"vault"],
