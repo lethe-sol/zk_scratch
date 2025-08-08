@@ -44,7 +44,7 @@ async function deposit() {
   const idl = JSON.parse(fs.readFileSync(idlPath, "utf8"));
 
   // Your installed Anchor typings likely expect (idl, provider, programId)
-  const program = new anchor.Program(idl as any, PROGRAM_ID) as Program;
+  const program = new anchor.Program(idl as anchor.Idl, PROGRAM_ID, provider);
 
 
   try {
