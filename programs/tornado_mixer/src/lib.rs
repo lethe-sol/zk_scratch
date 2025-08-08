@@ -4,24 +4,23 @@ declare_id!("31zAuv25vz5tV8oiHuq49Zd827mNpbaaZ6P7da6hHB8g");
 
 pub mod constants;
 pub mod errors;
-pub mod instructions; // keep public so the crate exposes it
+pub mod ix;       // <- renamed from `instructions`
 pub mod state;
 pub mod verifying_key;
 
-// Bring the Accounts types into scope so we can write Context<Initialize>, etc.
-use instructions::{initialize::Initialize, deposit::Deposit, withdraw::Withdraw};
+use ix::{initialize::Initialize, deposit::Deposit, withdraw::Withdraw};
 
 #[program]
 pub mod tornado_mixer {
     use super::*;
-    use anchor_lang::prelude::Result; // Anchor's Result alias
+    use anchor_lang::prelude::Result;
 
     pub fn initialize(ctx: Context<Initialize>, deposit_amount: u64) -> Result<()> {
-        instructions::initialize::initialize(ctx, deposit_amount)
+        ix::initialize::initialize(ctx, deposit_amount)
     }
 
     pub fn deposit(ctx: Context<Deposit>, commitment: [u8; 32]) -> Result<()> {
-        instructions::deposit::deposit(ctx, commitment)
+        ix::deposit::deposit(ctx, commitment)
     }
 
     pub fn withdraw(
@@ -31,6 +30,6 @@ pub mod tornado_mixer {
         nullifier_hash: [u8; 32],
         recipient: Pubkey,
     ) -> Result<()> {
-        instructions::withdraw::withdraw(ctx, proof, root, nullifier_hash, recipient)
+        ix::withdraw::withdraw(ctx, proof, root, nullifier_hash, recipient)
     }
 }
