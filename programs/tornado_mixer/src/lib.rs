@@ -10,13 +10,20 @@ pub mod verifying_key;
 
 #[program]
 pub mod tornado_mixer {
-    use super::instructions;
+    use super::*;
+    use anchor_lang::prelude::Result; // Anchor's Result alias
 
-    pub fn initialize(ctx: Context<instructions::Initialize>, deposit_amount: u64) -> Result<()> {
+    pub fn initialize(
+        ctx: Context<instructions::Initialize>,
+        deposit_amount: u64,
+    ) -> Result<()> {
         instructions::initialize(ctx, deposit_amount)
     }
 
-    pub fn deposit(ctx: Context<instructions::Deposit>, commitment: [u8; 32]) -> Result<()> {
+    pub fn deposit(
+        ctx: Context<instructions::Deposit>,
+        commitment: [u8; 32],
+    ) -> Result<()> {
         instructions::deposit(ctx, commitment)
     }
 
