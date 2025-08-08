@@ -35,7 +35,6 @@ pub mod tornado_mixer {
         require_keys_eq!(
             *ctx.accounts.merkle_tree.owner,
             CMT_ID,
-            TornadoError::InvalidOwner
         );
 
         // Persist the tree so deposit() can validate against it later.
@@ -54,17 +53,14 @@ pub mod tornado_mixer {
         require_keys_eq!(
             ctx.accounts.compression_program.key(),
             CMT_ID,
-            TornadoError::InvalidCompressionProgram
         );
         require_keys_eq!(
             ctx.accounts.noop_program.key(),
             NOOP_ID,
-            TornadoError::InvalidNoopProgram
         );
         require_keys_eq!(
             ctx.accounts.merkle_tree.key(),
             ctx.accounts.config.merkle_tree,
-            TornadoError::WrongTree
         );
 
         // 0.1 SOL in lamports
