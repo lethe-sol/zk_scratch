@@ -19,7 +19,7 @@ async function initialize() {
   anchor.setProvider(provider);
 
   const idl = await anchor.Program.fetchIdl(PROGRAM_ID, provider);
-  const program = new anchor.Program(idl!, PROGRAM_ID, provider) as Program<TornadoMixer>;
+  const program = new anchor.Program(idl!, provider) as Program<TornadoMixer>;
 
   try {
     const [vaultPda] = PublicKey.findProgramAddressSync(
@@ -51,9 +51,9 @@ async function initialize() {
       .accounts({
         payer: wallet.publicKey,
         vault: vaultPda,
-        merkleTree: merkleTreePda,
+        merkle_tree: merkleTreePda,
         config: configPda,
-        systemProgram: SystemProgram.programId,
+        system_program: SystemProgram.programId,
       })
       .rpc();
 
