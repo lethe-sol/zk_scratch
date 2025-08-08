@@ -40,20 +40,16 @@ async function deposit() {
   const fs = require("fs");
   const path = require("path");
   const idlPath = path.join(__dirname, "tornado_mixer.json");
-  const idlRaw = JSON.parse(fs.readFileSync(idlPath, "utf8"));
+  const idl = JSON.parse(fs.readFileSync(idlPath, "utf8"));
 
-  // ---- Tweak: make accounts an empty array instead of deleting it ----
-  // (Prevents TS runtime from trying to parse old-shaped account layouts.)
-  idlRaw.accounts = idlRaw.accounts ?? [];
-  const idl = idlRaw;
+  // 👉 IMPORTANT: your installed @coral-xyz/anchor wants (idl, provider, programId)
+  const program = new anchor.Program(idl as anchor.Idl, provider, PROGRAM_ID);
 
-  // Try newer Anchor ordering first, then fallback to older
-  const ProgramCtor: any = (anchor as any).Program;
-  let program: any;
-  try {
-    program = new ProgramCtor(idl, PROGRAM_ID, provider);
-  } catch {
-    program = new ProgramCtor(idl, provider, PROGRAM_ID);
+  // Quick sanity to avoid the "encode is undefined" faceplant
+  if (!(program as any)?.coder?.instruction?.encode) {
+    throw new Error(
+      "Program coder not initialized. Check Program constructor arg order and IDL validity."
+    );
   }
 
   try {
@@ -122,7 +118,6 @@ async function deposit() {
     console.log("✅ Deposit successful!");
     console.log("Transaction signature:", tx);
 
-    // Check for CPIs to compression + noop
     const parsed = await connection.getTransaction(tx, {
       maxSupportedTransactionVersion: 0,
       commitment: "confirmed",
