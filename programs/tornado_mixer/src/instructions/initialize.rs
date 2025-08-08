@@ -44,7 +44,6 @@ pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
     require_keys_eq!(
         ctx.accounts.merkle_tree.owner,
         CMT_ID,
-        crate::errors::TornadoError::InvalidOwner
     );
 
     // (Optional but recommended) Sanity log:
