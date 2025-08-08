@@ -2,8 +2,6 @@ use anchor_lang::prelude::*;
 
 declare_id!("31zAuv25vz5tV8oiHuq49Zd827mNpbaaZ6P7da6hHB8g");
 
-// Make `crate::...` paths work even if the compiler treats this as 2015 edition.
-extern crate self as crate;
 
 pub mod constants;
 pub mod errors;
