@@ -12,7 +12,7 @@ const SPL_NOOP_PROGRAM_ID = new PublicKey(
   "noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV"
 );
 
-// Toy hash function (little-endian bytes) — must match circuit’s expectations
+// Toy hash function (little-endian bytes)
 function simpleHash(inputs: number[]): number[] {
   const p =
     21888242871839275222246405745257275088548364400416034343698204186575808495617n;
@@ -40,7 +40,11 @@ async function deposit() {
   const fs = require("fs");
   const path = require("path");
   const idlPath = path.join(__dirname, "tornado_mixer.json");
-  const idl = JSON.parse(fs.readFileSync(idlPath, "utf8"));
+  const idlRaw = JSON.parse(fs.readFileSync(idlPath, "utf8"));
+
+  // --- Tweak: remove old-style accounts section to avoid TS crash ---
+  delete idlRaw.accounts;
+  const idl = idlRaw;
 
   // Try newer Anchor ordering first, then fallback to older
   const ProgramCtor: any = (anchor as any).Program;
@@ -107,7 +111,6 @@ async function deposit() {
       systemProgram: SystemProgram.programId,
     };
 
-    // Sanity print of all accounts being sent
     console.log(
       "\n📦 Accounts being sent to deposit():",
       Object.fromEntries(Object.entries(accs).map(([k, v]) => [k, v.toBase58()]))
@@ -118,7 +121,6 @@ async function deposit() {
     console.log("✅ Deposit successful!");
     console.log("Transaction signature:", tx);
 
-    // Check for CPIs to compression + noop
     const parsed = await connection.getTransaction(tx, {
       maxSupportedTransactionVersion: 0,
       commitment: "confirmed",
