@@ -40,16 +40,19 @@ async function deposit() {
   const fs = require("fs");
   const path = require("path");
   const idlPath = path.join(__dirname, "tornado_mixer.json");
-  const idl = JSON.parse(fs.readFileSync(idlPath, "utf8"));
+  const idlRaw = JSON.parse(fs.readFileSync(idlPath, "utf8"));
 
-  // 👉 IMPORTANT: your installed @coral-xyz/anchor wants (idl, provider, programId)
-  const program = new anchor.Program(idl as anchor.Idl, provider, PROGRAM_ID);
+  // --- Tweak: remove old-style accounts section to avoid TS crash ---
+  delete idlRaw.accounts;
+  const idl = idlRaw;
 
-  // Quick sanity to avoid the "encode is undefined" faceplant
-  if (!(program as any)?.coder?.instruction?.encode) {
-    throw new Error(
-      "Program coder not initialized. Check Program constructor arg order and IDL validity."
-    );
+  // Try newer Anchor ordering first, then fallback to older
+  const ProgramCtor: any = (anchor as any).Program;
+  let program: any;
+  try {
+    program = new ProgramCtor(idl, PROGRAM_ID, provider);
+  } catch {
+    program = new ProgramCtor(idl, provider, PROGRAM_ID);
   }
 
   try {
@@ -135,9 +138,9 @@ async function deposit() {
     );
     const sawNoop = programIds.includes(SPL_NOOP_PROGRAM_ID.toBase58());
     console.log(
-      `🔎 Inner CPI → compression: ${sawCompression ? "yes" : "no"}, noop: ${
+      🔎 Inner CPI → compression: ${sawCompression ? "yes" : "no"}, noop: ${
         sawNoop ? "yes" : "no"
-      }`
+      }
     );
 
     const walletBalanceAfter = await connection.getBalance(wallet.publicKey);
@@ -158,7 +161,7 @@ async function deposit() {
         "⚠️ Toy hash for testing. Use Poseidon consistent with your circuit before wiring withdraw.",
     };
 
-    const depositInfoPath = path.join(__dirname, `deposit_${Date.now()}.json`);
+    const depositInfoPath = path.join(__dirname, deposit_${Date.now()}.json);
     fs.writeFileSync(depositInfoPath, JSON.stringify(depositInfo, null, 2));
     console.log("\n💾 Deposit info saved to:", depositInfoPath);
     console.log("⚠️ Keep this file safe - you'll need it for withdrawal!");
@@ -169,3 +172,5 @@ async function deposit() {
 }
 
 deposit().catch(console.error);
+
+
