@@ -1,90 +1,31 @@
 use anchor_lang::prelude::*;
-use anchor_lang::system_program;
-use spl_account_compression::cpi::append;
-use crate::{constants::*, errors::TornadoError, state::*};
+use crate::state::MixerConfig;
 
 #[derive(Accounts)]
 pub struct Deposit<'info> {
+    // User making the deposit (will sign and pay the 0.1 SOL)
+    #[account(mut)]
+    pub user: Signer<'info>,
+    // Mixer config to verify the correct merkle tree
+    pub config: Account<'info, MixerConfig>,
+    /// CHECK: Merkle tree account (must match config.merkle_tree)
     #[account(
         mut,
-        seeds = [STATE_SEED],
-        bump = vault_state.bump
+        address = config.merkle_tree   // ensure we're using the correct tree
     )]
-    pub vault_state: Account<'info, VaultState>,
-
+    pub merkle_tree: UncheckedAccount<'info>,
+    /// CHECK: Vault PDA (pool account) - derived by seed
     #[account(
         mut,
-        seeds = [VAULT_SEED],
+        seeds = [b"vault"],
         bump
     )]
-    pub vault: SystemAccount<'info>,
-
-    /// CHECK: This is the merkle tree account used for SPL account compression.
-    /// Validation is performed by the CPI call into the `spl-account-compression` program.
-    #[account(mut)]
-    pub merkle_tree: AccountInfo<'info>,
-
-    /// CHECK: This is the tree authority PDA for the merkle tree.
-    /// It is validated by the `spl-account-compression` program during the CPI.
-    pub tree_authority: AccountInfo<'info>,
-
-    #[account(mut)]
-    pub depositor: Signer<'info>,
-
-    /// CHECK: This is the SPL account compression program.
-    /// The program ID is verified by Anchor when creating the CPI context.
-    pub compression_program: AccountInfo<'info>,
-
-    /// CHECK: This is the SPL Noop program used for logging in account compression.
-    /// No data is read from this account; only the program ID is used.
-    pub noop_program: AccountInfo<'info>,
-
+    pub vault: UncheckedAccount<'info>,
+    /// CHECK: Compression program (for CPI)
+    #[account(address = ACCOUNT_COMPRESSION_ID)]
+    pub compression_program: UncheckedAccount<'info>,
+    /// CHECK: Noop program (for CPI)
+    #[account(address = NOOP_PROGRAM_ID)]
+    pub noop_program: UncheckedAccount<'info>,
     pub system_program: Program<'info, System>,
-}
-
-pub fn deposit(ctx: Context<Deposit>, commitment: [u8; 32]) -> Result<()> {
-    let vault_state = &mut ctx.accounts.vault_state;
-    let deposit_amount = vault_state.deposit_amount;
-
-    // Transfer lamports from depositor to vault PDA
-    let transfer_instruction = system_program::Transfer {
-        from: ctx.accounts.depositor.to_account_info(),
-        to: ctx.accounts.vault.to_account_info(),
-    };
-    system_program::transfer(
-        CpiContext::new(
-            ctx.accounts.system_program.to_account_info(),
-            transfer_instruction,
-        ),
-        deposit_amount,
-    )?;
-
-    // Append commitment to merkle tree via CPI
-    let cpi_accounts = spl_account_compression::cpi::accounts::Modify {
-        merkle_tree: ctx.accounts.merkle_tree.to_account_info(),
-        authority: ctx.accounts.tree_authority.to_account_info(),
-        noop: ctx.accounts.noop_program.to_account_info(),
-    };
-    let cpi_ctx = CpiContext::new(
-        ctx.accounts.compression_program.to_account_info(),
-        cpi_accounts,
-    );
-    append(cpi_ctx, commitment).map_err(|e| {
-        msg!("Failed to append to merkle tree: {:?}", e);
-        TornadoError::InvalidProof
-    })?;
-
-    // Update deposit counter
-    vault_state.total_deposits = vault_state
-        .total_deposits
-        .checked_add(1)
-        .ok_or(TornadoError::ArithmeticOverflow)?;
-
-    msg!(
-        "Deposit successful: commitment={:?}, total_deposits={}",
-        commitment,
-        vault_state.total_deposits
-    );
-
-    Ok(())
 }
