@@ -152,6 +152,15 @@ async function withdraw() {
     try {
       const nullifierHashArray: number[] = Array.from(nullifierHash);
       
+      const [correctNullifierPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("nullifier"), Buffer.from(nullifierHashArray)],
+        PROGRAM_ID
+      );
+      
+      console.log("🔧 Recalculated nullifier PDA for instruction:", correctNullifierPda.toString());
+      console.log("🔧 Original calculated PDA:", nullifierPda.toString());
+      console.log("🔧 PDAs match:", correctNullifierPda.equals(nullifierPda));
+      
       const tx = await program.methods
         .withdraw(
           Array.from(mockProof),
@@ -164,7 +173,7 @@ async function withdraw() {
           config: configPda,
           merkleTree: merkleTreePda,
           vault: vaultPda,
-          nullifier: nullifierPda,
+          nullifier: correctNullifierPda, // Use the recalculated PDA
           recipient: recipient,
           systemProgram: SystemProgram.programId,
         })
