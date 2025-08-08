@@ -1,13 +1,17 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { Connection, PublicKey, SystemProgram } from "@solana/web3.js";
-import {
-  SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
-  SPL_NOOP_PROGRAM_ID,
-} from "@solana/spl-account-compression";
 
 const PROGRAM_ID = new PublicKey("2xBPdkCzfwFdc6khqbvaAvYxWcKMRaueXeVyaLRoWDrN");
 const DEPOSIT_AMOUNT = 100_000_000; // 0.1 SOL in lamports
+
+// Hardcode program IDs (cluster-wide constants)
+const SPL_ACCOUNT_COMPRESSION_PROGRAM_ID = new PublicKey(
+  "cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK"
+);
+const SPL_NOOP_PROGRAM_ID = new PublicKey(
+  "noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV"
+);
 
 // Toy hash -> 32 bytes (LE). Keep endian consistent with your circuit or switch to BE everywhere.
 function simpleHash(inputs: number[]): number[] {
@@ -39,7 +43,7 @@ async function deposit() {
   const idlPath = path.join(__dirname, "tornado_mixer.json");
   const idl = JSON.parse(fs.readFileSync(idlPath, "utf8"));
 
-  // Your installed Anchor typings expect (idl, provider, programId)
+  // Your installed Anchor typings likely expect (idl, provider, programId)
   const program = new anchor.Program(idl, provider, PROGRAM_ID) as Program;
 
   try {
