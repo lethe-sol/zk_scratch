@@ -6,7 +6,7 @@ use crate::state::MixerConfig;
 // SPL State/Account Compression + noop (log wrapper)
 use spl_account_compression::program::SplAccountCompression;
 use spl_account_compression::cpi::{accounts::Modify, append};
-use spl_noop::Noop; // <- correct import (crate root)
+spl_account_compression::Noop; // <- correct import (crate root)
 
 #[derive(Accounts)]
 pub struct Deposit<'info> {
