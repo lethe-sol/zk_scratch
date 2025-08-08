@@ -9,12 +9,18 @@ This folder contains TypeScript scripts for testing the deployed Tornado Mixer p
    solana config get
    ```
 
-2. Ensure you have devnet SOL in your wallet:
+2. Set up your Anchor wallet environment:
+   ```bash
+   export ANCHOR_WALLET=~/.config/solana/id.json
+   # or point to your specific wallet file
+   ```
+
+3. Ensure you have devnet SOL in your wallet:
    ```bash
    solana balance --url devnet
    ```
 
-3. Install dependencies (run from project root):
+4. Install dependencies (run from project root):
    ```bash
    npm install
    # or
