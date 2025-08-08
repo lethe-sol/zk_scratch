@@ -36,8 +36,8 @@ npx ts-node scripts/init.ts
 ```
 
 **Configuration:**
-- Max Depth: 14 (supports ~16K deposits)
-- Max Buffer Size: 64 (batching operations)
+- Max Depth: 10 (supports ~1K deposits)
+- Max Buffer Size: 32 (batching operations)
 - Network: Devnet
 - Program ID: `2xBPdkCzfwFdc6khqbvaAvYxWcKMRaueXeVyaLRoWDrN`
 
