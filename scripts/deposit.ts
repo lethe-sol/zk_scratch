@@ -5,13 +5,20 @@ import { Connection, Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
 const PROGRAM_ID = new PublicKey("2xBPdkCzfwFdc6khqbvaAvYxWcKMRaueXeVyaLRoWDrN");
 const DEPOSIT_AMOUNT = 100_000_000; // 0.1 SOL in lamports
 
-function simpleHash(inputs: number[]): string {
+function simpleHash(inputs: number[]): Uint8Array {
   const fieldModulus = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
   let hash = 0n;
   for (let i = 0; i < inputs.length; i++) {
     hash = (hash + BigInt(inputs[i]) * BigInt(i + 1)) % fieldModulus;
   }
-  return hash.toString();
+  
+  const bytes = new Uint8Array(32);
+  let hashValue = hash;
+  for (let i = 0; i < 32; i++) {
+    bytes[i] = Number(hashValue & 0xFFn);
+    hashValue >>= 8n;
+  }
+  return bytes;
 }
 
 async function deposit() {
@@ -39,10 +46,10 @@ async function deposit() {
     console.log("Secret:", secret);
     
     const commitment = simpleHash([nullifier, secret]);
-    console.log("Commitment:", commitment);
+    console.log("Commitment:", Array.from(commitment).slice(0, 8).join(','), "... (32 bytes)");
     
     const nullifierHash = simpleHash([nullifier]);
-    console.log("Nullifier Hash:", nullifierHash);
+    console.log("Nullifier Hash:", Array.from(nullifierHash).slice(0, 8).join(','), "... (32 bytes)");
 
     const [vaultPda] = PublicKey.findProgramAddressSync(
       [Buffer.from("vault")],
@@ -77,12 +84,11 @@ async function deposit() {
     const tx = await program.methods
       .deposit(commitment)
       .accounts({
-        depositor: wallet.publicKey,
+        user: wallet.publicKey,
         vault: vaultPda,
         merkleTree: merkleTreePda,
         config: configPda,
         systemProgram: SystemProgram.programId,
-        compressionProgram: new PublicKey("compr6CUsB5m2jS4Y3831ztGSTnDpnKJTKS95d64XVq"),
       })
       .rpc();
 
@@ -99,8 +105,8 @@ async function deposit() {
     const depositInfo = {
       nullifier,
       secret,
-      commitment,
-      nullifierHash,
+      commitment: Array.from(commitment),
+      nullifierHash: Array.from(nullifierHash),
       transactionSignature: tx,
       timestamp: new Date().toISOString(),
       note: "⚠️ This uses a simple hash for testing. For production withdrawals, use proper Poseidon hash matching the circuits."
