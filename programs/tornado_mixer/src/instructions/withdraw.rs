@@ -9,13 +9,14 @@ pub struct Withdraw<'info> {
 
     pub config: Account<'info, MixerConfig>,
 
-    /// CHECK: Must match config.merkle_tree (read only)
+    /// CHECK: Must equal config.merkle_tree; read-only here (no mutation).
+    /// We validate proof against a root and rely on nullifier PDA for uniqueness.
     #[account(
         address = config.merkle_tree
     )]
     pub merkle_tree: UncheckedAccount<'info>,
 
-    /// Vault PDA (source of funds)
+    /// CHECK: Vault is PDA [b"vault"]; used only for lamports and as signer via seeds.
     #[account(
         mut,
         seeds = [b"vault"],
@@ -23,7 +24,6 @@ pub struct Withdraw<'info> {
     )]
     pub vault: UncheckedAccount<'info>,
 
-    /// Nullifier PDA — marks note as spent; init will fail if it already exists
     #[account(
         init,
         seeds = [b"nullifier", nullifier_hash.as_ref()],
@@ -33,7 +33,6 @@ pub struct Withdraw<'info> {
     )]
     pub nullifier: Account<'info, NullifierState>,
 
-    /// Recipient of the withdrawn SOL
     #[account(mut)]
     pub recipient: SystemAccount<'info>,
 
