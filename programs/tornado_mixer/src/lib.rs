@@ -14,7 +14,6 @@ use verifying_key::VERIFYING_KEY;
 // SPL compression: header + size calc + wrappers
 use spl_account_compression::state::{
     ConcurrentMerkleTreeHeader,
-    CompressionAccountType,
     CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1,
     merkle_tree_get_size,
 };
@@ -35,22 +34,30 @@ pub mod tornado_mixer {
         max_depth: u32,
         max_buffer_size: u32,
     ) -> Result<()> {
-        // Build a header in memory first
-        let mut header = ConcurrentMerkleTreeHeader {
-            account_type: CompressionAccountType::ConcurrentMerkleTree,
-            header: Default::default(),
+        use spl_account_compression::state::{
+            ConcurrentMerkleTreeHeader,
+            CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1,
+            merkle_tree_get_size,
         };
+        use spl_account_compression::concurrent_tree_wrapper::merkle_tree_initialize_empty;
+
+        // 1) Start from a zeroed header, then initialize it
+        let mut header = ConcurrentMerkleTreeHeader::try_from_slice(
+            &[0u8; CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1]
+        )?;
         header.initialize(
             max_depth,
             max_buffer_size,
-            &ctx.accounts.vault.key(),   // vault is the tree authority
+            &ctx.accounts.vault.key(),    // vault is the authority
             Clock::get()?.slot,
         );
-        header.assert_valid()?; // also enforces allowed depth/buffer pairs
+        header.assert_valid()?; // enforces allowed (depth, buffer) pairs
 
-        // Compute dynamic size and create the PDA if empty
+        // 2) Compute dynamic tree size and total space
         let tree_size = merkle_tree_get_size(&header)? as usize;
         let space = CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1 + tree_size;
+
+        // 3) Create the merkle_tree PDA account if needed
         if ctx.accounts.merkle_tree.data_is_empty() {
             let lamports = Rent::get()?.minimum_balance(space);
             let seeds = &[b"tree".as_ref(), &[ctx.bumps.merkle_tree]];
@@ -73,21 +80,25 @@ pub mod tornado_mixer {
             )?;
         }
 
-        // Serialize header + init tree bytes
+        // 4) Write header and initialize empty tree bytes in-place
         {
             let mut data = ctx.accounts.merkle_tree.try_borrow_mut_data()?;
             let (header_bytes, tree_bytes) =
                 data.split_at_mut(CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1);
 
             let ser = header.try_to_vec()?;
-            require_eq!(ser.len(), CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1, MixerError::InvalidState);
+            require_eq!(
+                ser.len(),
+                CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1,
+                MixerError::InvalidState
+            );
             header_bytes.copy_from_slice(&ser);
 
-            // Initialize the empty tree in-place
+            // Build the empty tree
             merkle_tree_initialize_empty(&header, ctx.accounts.merkle_tree.key(), tree_bytes)?;
         }
 
-        // Store reference to the tree
+        // 5) Persist the tree pubkey
         ctx.accounts.config.merkle_tree = ctx.accounts.merkle_tree.key();
         Ok(())
     }
@@ -105,7 +116,7 @@ pub mod tornado_mixer {
                 to: ctx.accounts.vault.to_account_info(),
             },
         );
-        system_program::transfer(cpi, deposit_amount)?; // standard way to move SOL in Anchor. :contentReference[oaicite:2]{index=2}
+        system_program::transfer(cpi, deposit_amount)?; // standard way to move SOL in Anchor.
 
         // Append commitment to the tree (read header from account)
         let mut data = ctx.accounts.merkle_tree.try_borrow_mut_data()?;
@@ -132,7 +143,7 @@ pub mod tornado_mixer {
         _recipient: Pubkey, // kept for IDL clarity, we use the account below
     ) -> Result<()> {
         // 1) Verify Groth16 proof (library expects big-endian inputs).
-        //    NR_INPUTS = 2 here (root, nullifier). :contentReference[oaicite:3]{index=3}
+        //    NR_INPUTS = 2 here (root, nullifier).
         let proof_a: [u8; 64]   = proof[0..64].try_into().unwrap();
         let proof_b: [u8; 128]  = proof[64..192].try_into().unwrap();
         let proof_c: [u8; 64]   = proof[192..256].try_into().unwrap();
@@ -145,7 +156,7 @@ pub mod tornado_mixer {
             &public_inputs,
             &VERIFYING_KEY,
         ).map_err(|_| MixerError::InvalidProof)?;
-        verifier.verify().map_err(|_| MixerError::InvalidProof)?; // :contentReference[oaicite:4]{index=4}
+        verifier.verify().map_err(|_| MixerError::InvalidProof)?;
 
         // 2) (Nullifier PDA is created by the Accounts context; if it already exists, init fails)
 
