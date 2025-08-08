@@ -1,7 +1,6 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { Connection, Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
-import { TornadoMixer } from "../target/types/tornado_mixer";
 
 const PROGRAM_ID = new PublicKey("2xBPdkCzfwFdc6khqbvaAvYxWcKMRaueXeVyaLRoWDrN");
 
@@ -18,8 +17,9 @@ async function initialize() {
   });
   anchor.setProvider(provider);
 
-  const idl = await anchor.Program.fetchIdl(PROGRAM_ID, provider);
-  const program = new anchor.Program(idl!, provider) as Program<TornadoMixer>;
+  const fs = require('fs');
+  const idl = JSON.parse(fs.readFileSync('./tornado_mixer.json', 'utf8'));
+  const program = new anchor.Program(idl, provider);
 
   try {
     const [vaultPda] = PublicKey.findProgramAddressSync(
