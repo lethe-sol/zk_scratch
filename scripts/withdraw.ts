@@ -42,10 +42,13 @@ function generateMockRoot(): Uint8Array {
 async function withdraw() {
   const connection = new Connection("https://api.devnet.solana.com", "confirmed");
   
+  let wallet: any;
+  let provider: any;
+  
   try {
-    const wallet = anchor.AnchorProvider.local().wallet;
+    wallet = anchor.AnchorProvider.local().wallet;
     
-    const provider = new anchor.AnchorProvider(connection, wallet, {
+    provider = new anchor.AnchorProvider(connection, wallet, {
       commitment: "confirmed",
     });
     anchor.setProvider(provider);
