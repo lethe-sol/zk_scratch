@@ -10,7 +10,7 @@ const DEPOSIT_AMOUNT = 100_000_000; // 0.1 SOL in lamports
 
 // SPL programs (cluster-wide constants)
 const SPL_ACCOUNT_COMPRESSION_PROGRAM_ID = new PublicKey(
-  "cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK"
+  "compr6CUsB5m2jS4Y3831ztGSTnDpnKJTKS95d64XVq"
 );
 const SPL_NOOP_PROGRAM_ID = new PublicKey(
   "noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV"
