@@ -22,24 +22,24 @@
       "accounts": [
         {
           "name": "user",
+          "docs": [
+            "Payer; funds move from here into the vault PDA"
+          ],
           "writable": true,
           "signer": true
         },
         {
-          "name": "config"
+          "name": "config",
+          "docs": [
+            "Mixer config that stores the Merkle tree pubkey"
+          ]
         },
         {
           "name": "merkle_tree",
-          "docs": [
-            "before modifying tree bytes. We only use it to read header and append a leaf."
-          ],
           "writable": true
         },
         {
           "name": "vault",
-          "docs": [
-            "It also serves as authority for the tree and signs via seeds in handlers."
-          ],
           "writable": true,
           "pda": {
             "seeds": [
@@ -55,6 +55,20 @@
               }
             ]
           }
+        },
+        {
+          "name": "compression_program",
+          "docs": [
+            "SPL Account/State Compression program (fixed ID on cluster)"
+          ],
+          "address": "cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK"
+        },
+        {
+          "name": "noop_program",
+          "docs": [
+            "Noop program (log wrapper for changelog)"
+          ],
+          "address": "noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV"
         },
         {
           "name": "system_program",
@@ -88,13 +102,16 @@
       "accounts": [
         {
           "name": "payer",
+          "docs": [
+            "Pays rent/fees."
+          ],
           "writable": true,
           "signer": true
         },
         {
           "name": "vault",
           "docs": [
-            "it only holds lamports and signs via seeds in handlers."
+            "signs via seeds [b\"vault\"]. No data is stored in this account."
           ],
           "writable": true,
           "pda": {
@@ -115,26 +132,16 @@
         {
           "name": "merkle_tree",
           "docs": [
-            "Size and header are validated in the handler before use; we only write the header",
-            "and tree bytes via SPL account-compression wrappers."
+            "Account Compression program cmtDvXum…). We validate ownership in the",
+            "handler. Marked mut because we'll append leaves later."
           ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  116,
-                  114,
-                  101,
-                  101
-                ]
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "config",
+          "docs": [
+            "Stores the chosen Merkle tree pubkey for later use."
+          ],
           "writable": true,
           "pda": {
             "seeds": [
@@ -159,11 +166,11 @@
       ],
       "args": [
         {
-          "name": "max_depth",
+          "name": "_max_depth",
           "type": "u32"
         },
         {
-          "name": "max_buffer_size",
+          "name": "_max_buffer_size",
           "type": "u32"
         }
       ]
@@ -183,20 +190,26 @@
       "accounts": [
         {
           "name": "payer",
+          "docs": [
+            "Payer for the nullifier PDA rent; also tx signer."
+          ],
           "writable": true,
           "signer": true
         },
         {
-          "name": "config"
-        },
-        {
-          "name": "merkle_tree",
+          "name": "config",
           "docs": [
-            "We validate proof against a root and rely on nullifier PDA for uniqueness."
+            "Mixer configuration (stores the Merkle tree pubkey, and later a roots window)."
           ]
         },
         {
+          "name": "merkle_tree"
+        },
+        {
           "name": "vault",
+          "docs": [
+            "PDA = Pubkey::find_program_address([b\"vault\"], program_id)"
+          ],
           "writable": true,
           "pda": {
             "seeds": [
@@ -215,6 +228,10 @@
         },
         {
           "name": "nullifier",
+          "docs": [
+            "Nullifier PDA — initialized to mark the note as spent.",
+            "PDA = Pubkey::find_program_address([b\"nullifier\", nullifier_hash.as_ref()], program_id)"
+          ],
           "writable": true,
           "pda": {
             "seeds": [
@@ -241,6 +258,9 @@
         },
         {
           "name": "recipient",
+          "docs": [
+            "Recipient of the withdrawal (system account for lamport transfer)."
+          ],
           "writable": true
         },
         {
