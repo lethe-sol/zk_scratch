@@ -11,10 +11,6 @@ use state::*;
 use errors::*;
 use verifying_key::VERIFYING_KEY;
 
-// 🔑 Import the accounts type as a bare identifier.
-// The #[program] macro will then generate __client_accounts_withdraw (works).
-use crate::instructions::withdraw::Withdraw;
-
 use spl_account_compression::{program::SplAccountCompression, Noop, ID as CMT_ID};
 use spl_noop::ID as NOOP_ID;
 
@@ -25,7 +21,7 @@ pub mod tornado_mixer {
     use super::*;
 
     pub fn initialize(
-        ctx: Context<Initialize>,
+        ctx: Context<instructions::initialize::Initialize>,
         _max_depth: u32,
         _max_buffer_size: u32,
     ) -> Result<()> {
@@ -36,7 +32,10 @@ pub mod tornado_mixer {
         Ok(())
     }
 
-    pub fn deposit(ctx: Context<Deposit>, commitment: [u8; 32]) -> Result<()> {
+    pub fn deposit(
+        ctx: Context<instructions::deposit::Deposit>,
+        commitment: [u8; 32],
+    ) -> Result<()> {
         require_keys_eq!(ctx.accounts.compression_program.key(), CMT_ID);
         require_keys_eq!(ctx.accounts.noop_program.key(), NOOP_ID);
         require_keys_eq!(ctx.accounts.merkle_tree.key(), ctx.accounts.config.merkle_tree);
@@ -72,7 +71,7 @@ pub mod tornado_mixer {
     }
 
     pub fn withdraw(
-        ctx: Context<Withdraw>, // ✅ bare type, no alias, no module prefix
+        ctx: Context<instructions::withdraw::Withdraw>, // ✅ fully-qualified, no re-exports
         proof: [u8; 256],
         root: [u8; 32],
         nullifier_hash: [u8; 32],
