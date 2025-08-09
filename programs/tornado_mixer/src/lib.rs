@@ -12,6 +12,9 @@ use state::*;
 use errors::*;
 use verifying_key::VERIFYING_KEY;
 
+// 👇 Bring the accounts type in as a bare identifier (no leading module path)
+use crate::instructions::withdraw::Withdraw as WithdrawAccounts;
+
 use spl_account_compression::{program::SplAccountCompression, Noop, ID as CMT_ID};
 use spl_noop::ID as NOOP_ID;
 
@@ -94,7 +97,7 @@ pub mod tornado_mixer {
     ///  6) relayer_2    (0 for now)
     ///  7) fee          (0 for now)
     pub fn withdraw(
-        ctx: Context<instructions::withdraw::Withdraw>, // <-- key change: no leading `crate::`
+        ctx: Context<WithdrawAccounts>, // ✅ bare identifier, avoids the macro path issue
         proof: [u8; 256],
         root: [u8; 32],
         nullifier_hash: [u8; 32],
