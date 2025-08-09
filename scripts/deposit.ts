@@ -1,32 +1,43 @@
+// scripts/deposit_poseidon.ts
 import * as anchor from "@coral-xyz/anchor";
-import { Connection, PublicKey, SystemProgram, Transaction, TransactionInstruction } from "@solana/web3.js";
-import crypto from "crypto";
+import {
+  Connection,
+  PublicKey,
+  SystemProgram,
+  Transaction,
+  TransactionInstruction,
+} from "@solana/web3.js";
+import * as nodeCrypto from "crypto";
 import fs from "fs";
 import path from "path";
+import { buildPoseidon } from "circomlibjs";
 
+// ---- CONFIG ----
 const PROGRAM_ID = new PublicKey("2xBPdkCzfwFdc6khqbvaAvYxWcKMRaueXeVyaLRoWDrN");
-const DEPOSIT_AMOUNT = 100_000_000; // 0.1 SOL (only relevant if your on-chain code transfers)
+const CMT_PID    = new PublicKey("cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK");
+const NOOP_PID   = new PublicKey("noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV");
 
-const SPL_ACCOUNT_COMPRESSION_PROGRAM_ID = new PublicKey("compr6CUsB5m2jS4Y3831ztGSTnDpnKJTKS95d64XVq");
-const SPL_NOOP_PROGRAM_ID = new PublicKey("noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV");
+// Your SPL CMT tree (authority = vault PDA)
+const TREE_PUBKEY = new PublicKey("5yeiuqLK1Gp4W5PZHTnLCqzDTjEjxyTBUaMo6Z46LvuE");
 
-// Toy hash function (little-endian bytes) — unchanged
-function simpleHash(inputs: number[]): number[] {
-  const p =
-    21888242871839275222246405745257275088548364400416034343698204186575808495617n;
-  let h = 0n;
-  for (let i = 0; i < inputs.length; i++) {
-    h = (h + BigInt(inputs[i]) * BigInt(i + 1)) % p;
-  }
-  const out = new Array<number>(32).fill(0);
-  for (let i = 0; i < 32; i++) {
-    out[i] = Number(h & 0xffn);
-    h >>= 8n;
-  }
+// BN254 prime
+const P = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
+
+// BigInt -> 32B big-endian
+function feToBytes32BE(x: bigint): Uint8Array {
+  const out = new Uint8Array(32);
+  let t = x;
+  for (let i = 31; i >= 0; i--) { out[i] = Number(t & 255n); t >>= 8n; }
   return out;
 }
 
-async function deposit() {
+// Uniform random field element < P
+function randField(): bigint {
+  const rnd = BigInt("0x" + nodeCrypto.randomBytes(32).toString("hex"));
+  return rnd % P;
+}
+
+async function main() {
   const connection = new Connection("https://api.devnet.solana.com", "confirmed");
   const provider = new anchor.AnchorProvider(
     connection,
@@ -37,61 +48,79 @@ async function deposit() {
 
   const wallet = provider.wallet.publicKey;
 
-  // Derive PDAs same as your current code
-  const [vaultPda] = PublicKey.findProgramAddressSync([Buffer.from("vault")], PROGRAM_ID);
-  const [merkleTreePda] = PublicKey.findProgramAddressSync([Buffer.from("tree")], PROGRAM_ID);
+  // PDAs (match on-chain seeds)
+  const [vaultPda]  = PublicKey.findProgramAddressSync([Buffer.from("vault")], PROGRAM_ID);
   const [configPda] = PublicKey.findProgramAddressSync([Buffer.from("config")], PROGRAM_ID);
 
-  // Build commitment & note info
-  const nullifier = Math.floor(Math.random() * 2 ** 30);
-  const secret = Math.floor(Math.random() * 2 ** 30);
-  const commitment = simpleHash([nullifier, secret]); // 32 byte number[]
-  const nullifierHash = simpleHash([nullifier]);
+  // ----- Poseidon(commitment) + Poseidon(nullifier) -----
+  const poseidon = await buildPoseidon();
+  const F = poseidon.F;
 
-  console.log("🔐 commitment[0..8]:", commitment.slice(0, 8));
+  // Choose note secrets
+  const nullifier = randField();
+  const secret    = randField();
 
-  // ---- Build raw instruction data: discriminator + commitment bytes ----
-  const disc = crypto.createHash("sha256").update("global:deposit").digest().slice(0, 8);
-  const data = Buffer.concat([disc, Buffer.from(commitment)]); // commitment length MUST be 32
+  // leaf = Poseidon([nullifier, secret]), nullifierHash = Poseidon([nullifier])
+  const C  = F.toObject(poseidon([nullifier, secret])) as bigint;
+  const NH = F.toObject(poseidon([nullifier])) as bigint;
 
-  // ---- Accounts: EXACT order from your IDL ----
+  // Encode to 32 bytes big-endian to match on-chain/circuit expectations
+  const commitmentBytes    = feToBytes32BE(C);
+  const nullifierHashBytes = feToBytes32BE(NH);
+
+  console.log("payer:", wallet.toBase58());
+  console.log("vault PDA:", vaultPda.toBase58());
+  console.log("config PDA:", configPda.toBase58());
+  console.log("merkleTree:", TREE_PUBKEY.toBase58());
+  console.log("🔐 commitment[0..8]:", Array.from(commitmentBytes.slice(0, 8)));
+
+  // ----- Build deposit ix: discriminator("global:deposit") + 32B commitment -----
+  const disc = nodeCrypto.createHash("sha256").update("global:deposit").digest().slice(0, 8);
+  const data = Buffer.concat([disc, Buffer.from(commitmentBytes)]);
+
+  // Accounts (IDL order): user, config, merkle_tree, vault, compression_program, noop_program, system_program
   const keys = [
-    { pubkey: wallet,                  isSigner: true,  isWritable: true  }, // user
-    { pubkey: configPda,               isSigner: false, isWritable: false }, // config
-    { pubkey: merkleTreePda,           isSigner: false, isWritable: true  }, // merkle_tree
-    { pubkey: vaultPda,                isSigner: false, isWritable: true  }, // vault
-    { pubkey: SPL_ACCOUNT_COMPRESSION_PROGRAM_ID, isSigner: false, isWritable: false }, // compression_program
-    { pubkey: SPL_NOOP_PROGRAM_ID,     isSigner: false, isWritable: false }, // noop_program
-    { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // system_program
+    { pubkey: wallet,     isSigner: true,  isWritable: true  },
+    { pubkey: configPda,  isSigner: false, isWritable: false },
+    { pubkey: TREE_PUBKEY,isSigner: false, isWritable: true  },
+    { pubkey: vaultPda,   isSigner: false, isWritable: true  },
+    { pubkey: CMT_PID,    isSigner: false, isWritable: false },
+    { pubkey: NOOP_PID,   isSigner: false, isWritable: false },
+    { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
   ];
 
-  const ix = new TransactionInstruction({
-    programId: PROGRAM_ID,
-    keys,
-    data,
-  });
-
+  const ix = new TransactionInstruction({ programId: PROGRAM_ID, keys, data });
   const tx = new Transaction().add(ix);
   const sig = await provider.sendAndConfirm(tx, [], { commitment: "confirmed" });
-
   console.log("✅ Deposit sent:", sig);
 
-  // Save a note file (like before)
+  // Quick CPI sanity check
+  const parsed = await connection.getTransaction(sig, { maxSupportedTransactionVersion: 0, commitment: "confirmed" });
+  const innerPrograms =
+    parsed?.meta?.innerInstructions?.flatMap((ii: any) =>
+      ii.instructions.map((ix: any) =>
+        parsed.transaction.message.staticAccountKeys[ix.programIdIndex].toBase58()
+      )
+    ) || [];
+  console.log(
+    `🔎 Inner CPI → compression: ${innerPrograms.includes(CMT_PID.toBase58()) ? "yes" : "no"}, ` +
+    `noop: ${innerPrograms.includes(NOOP_PID.toBase58()) ? "yes" : "no"}`
+  );
+
+  // Save note for withdraw
   const out = {
-    nullifier,
-    secret,
-    commitment,
-    nullifierHash,
+    nullifier: nullifier.toString(),          // decimal strings for bigint
+    secret:    secret.toString(),
+    nullifierHashHex: Buffer.from(nullifierHashBytes).toString("hex"),
+    commitmentHex:    Buffer.from(commitmentBytes).toString("hex"),
+    tree: TREE_PUBKEY.toBase58(),
     tx: sig,
     timestamp: new Date().toISOString(),
-    note: "Toy hash only. Swap to Poseidon to match circuit before withdraw.",
+    note: "Poseidon-based note. Use these values for withdraw proof generation.",
   };
   const fp = path.join(__dirname, `deposit_${Date.now()}.json`);
   fs.writeFileSync(fp, JSON.stringify(out, null, 2));
   console.log("💾 Saved:", fp);
 }
 
-deposit().catch((e) => {
-  console.error("❌ Deposit failed:", e);
-  process.exit(1);
-});
+main().catch((e) => { console.error("❌ Deposit failed:", e); process.exit(1); });
