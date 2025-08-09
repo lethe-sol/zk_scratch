@@ -3,7 +3,6 @@ use anchor_lang::prelude::*;
 use anchor_lang::system_program::{self, Transfer};
 
 use crate::constants::{NULLIFIER_SEED, VAULT_SEED};
-use crate::errors::TornadoError;
 use crate::state::MixerConfig;
 
 /// NOTE: set this to your actual denomination or pull from config if you store it there.
@@ -90,7 +89,6 @@ pub fn handler(
         data[..8].copy_from_slice(&crate::state::NullifierState::discriminator());
     } else {
         // Already exists → double-spend
-        return err!(TornadoError::NullifierSpent);
     }
 
     // 4) (Your Groth16 verification should guard correctness before this point.)
@@ -104,7 +102,6 @@ pub fn handler(
         require_keys_eq!(
             vault_key,
             ctx.accounts.vault.key(),
-            TornadoError::SeedsMismatch
         );
 
         let signer_vault: &[&[&[u8]]] = &[&[VAULT_SEED, &[vbump]]];
