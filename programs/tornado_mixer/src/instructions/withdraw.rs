@@ -57,7 +57,6 @@ pub fn handler(
     require_keys_eq!(
         expected_nullifier,
         ctx.accounts.nullifier.key(),
-        TornadoError::SeedsMismatch
     );
 
     // 3) If the nullifier account doesn't exist yet, create it and mark as spent.
