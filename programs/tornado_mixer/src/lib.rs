@@ -1,3 +1,4 @@
+// programs/tornado_mixer/src/lib.rs
 use anchor_lang::prelude::*;
 use anchor_lang::system_program::{self, Transfer};
 
@@ -93,7 +94,7 @@ pub mod tornado_mixer {
     ///  6) relayer_2    (0 for now)
     ///  7) fee          (0 for now)
     pub fn withdraw(
-        ctx: Context<crate::instructions::withdraw::Withdraw>, // absolute path (safer for macro)
+        ctx: Context<instructions::withdraw::Withdraw>, // <-- key change: no leading `crate::`
         proof: [u8; 256],
         root: [u8; 32],
         nullifier_hash: [u8; 32],
