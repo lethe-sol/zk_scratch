@@ -10,7 +10,12 @@ use crate::state::{MixerConfig, NullifierState};
 /// - `nullifier` PDA (seed = ["nullifier", nullifier_hash]) is initialized to enforce one-time spend.
 /// - `recipient` receives the lamports after proof verification in the handler.
 #[derive(Accounts)]
-#[instruction(nullifier_hash: [u8; 32])]
+#[instruction(
+    proof: [u8; 256],
+    root: [u8; 32],
+    nullifier_hash: [u8; 32],
+    _recipient: Pubkey
+)]
 pub struct Withdraw<'info> {
     /// Payer for the nullifier PDA rent; also tx signer.
     #[account(mut)]
