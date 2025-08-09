@@ -9,7 +9,7 @@ pub mod instructions {
     pub mod withdraw;
 }
 
-declare_id!("YourProgramId1111111111111111111111111111111");
+declare_id!("2xBPdkCzfwFdc6khqbvaAvYxWcKMRaueXeVyaLRoWDrN");
 
 #[program]
 pub mod tornado_mixer {
