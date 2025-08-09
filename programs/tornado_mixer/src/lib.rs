@@ -12,7 +12,7 @@ use state::*;
 use errors::*;
 use verifying_key::VERIFYING_KEY;
 
-// 👇 Bring the accounts type in as a bare identifier (no leading module path)
+// Bring the accounts type in as a bare identifier so #[program] macro generates helpers cleanly
 use crate::instructions::withdraw::Withdraw as WithdrawAccounts;
 
 use spl_account_compression::{program::SplAccountCompression, Noop, ID as CMT_ID};
@@ -47,7 +47,7 @@ pub mod tornado_mixer {
     /// User sends 0.1 SOL to the vault; we append their commitment as a new leaf
     /// using a CPI to SPL Account Compression.
     pub fn deposit(ctx: Context<Deposit>, commitment: [u8; 32]) -> Result<()> {
-        // Sanity checks so bad clients fail loudly.
+        // Sanity checks
         require_keys_eq!(ctx.accounts.compression_program.key(), CMT_ID);
         require_keys_eq!(ctx.accounts.noop_program.key(), NOOP_ID);
         require_keys_eq!(ctx.accounts.merkle_tree.key(), ctx.accounts.config.merkle_tree);
@@ -91,17 +91,17 @@ pub mod tornado_mixer {
     /// Public inputs expected by the VK/circuit (order matters):
     ///  1) root
     ///  2) nullifierHash
-    ///  3) recipient_1  (first 16B of recipient pubkey, encoded as 32B BE field)
-    ///  4) recipient_2  (last 16B)
+    ///  3) recipient_1 (first 16B of recipient pubkey, as 32B BE field)
+    ///  4) recipient_2 (last 16B)
     ///  5) relayer_1    (0 for now)
     ///  6) relayer_2    (0 for now)
     ///  7) fee          (0 for now)
     pub fn withdraw(
-        ctx: Context<WithdrawAccounts>, // ✅ bare identifier, avoids the macro path issue
+        ctx: Context<WithdrawAccounts>, // ✅ bare identifier, avoids __client_accounts_* crate bug
         proof: [u8; 256],
         root: [u8; 32],
         nullifier_hash: [u8; 32],
-        _recipient: Pubkey, // kept for IDL clarity; we bind to accounts.recipient below
+        _recipient: Pubkey, // kept for IDL clarity; use accounts.recipient below
     ) -> Result<()> {
         use groth16_solana::groth16::Groth16Verifier;
 
@@ -111,7 +111,6 @@ pub mod tornado_mixer {
         let proof_c: [u8; 64]  = proof[192..256].try_into().unwrap();
 
         // --- build 7 public inputs in circuit order ---
-        // embed a 16B chunk into a 32B field element (big-endian: place at the tail)
         fn be16_to_fe32(x: &[u8;16]) -> [u8;32] {
             let mut out = [0u8;32];
             out[16..].copy_from_slice(x);
@@ -126,32 +125,24 @@ pub mod tornado_mixer {
         let recipient_1 = be16_to_fe32(&r_hi);
         let recipient_2 = be16_to_fe32(&r_lo);
 
-        // Not using relayer/fee yet — keep them zero (must match prover inputs)
-        let relayer_1 = [0u8;32];
-        let relayer_2 = [0u8;32];
-        let fee_fe    = [0u8;32];
-
+        // No relayer/fee yet — keep zeros (must match prover inputs)
         let public_inputs: [[u8;32]; 7] = [
             root,
             nullifier_hash,
             recipient_1,
             recipient_2,
-            relayer_1,
-            relayer_2,
-            fee_fe,
+            [0u8;32],
+            [0u8;32],
+            [0u8;32],
         ];
 
-        // --- verify Groth16 proof against the embedded VK ---
+        // --- verify Groth16 proof ---
         let mut verifier = Groth16Verifier::new(
-            &proof_a,
-            &proof_b,
-            &proof_c,
-            &public_inputs,
-            &VERIFYING_KEY,
+            &proof_a, &proof_b, &proof_c, &public_inputs, &VERIFYING_KEY,
         ).map_err(|_| MixerError::InvalidProof)?;
         verifier.verify().map_err(|_| MixerError::InvalidProof)?;
 
-        // TODO: require! that `root` ∈ accepted roots window kept in `config`
+        // TODO: require! that `root` ∈ accepted roots window in `config`
 
         // Payout fixed denomination from vault PDA to recipient
         const WITHDRAW_LAMPORTS: u64 = 100_000_000;
