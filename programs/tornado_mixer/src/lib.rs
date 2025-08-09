@@ -93,7 +93,7 @@ pub mod tornado_mixer {
     ///  6) relayer_2    (0 for now)
     ///  7) fee          (0 for now)
     pub fn withdraw(
-        ctx: Context<Withdraw>,
+        ctx: Context<crate::instructions::withdraw::Withdraw>, // absolute path (safer for macro)
         proof: [u8; 256],
         root: [u8; 32],
         nullifier_hash: [u8; 32],
@@ -142,12 +142,12 @@ pub mod tornado_mixer {
             &proof_a,
             &proof_b,
             &proof_c,
-            &public_inputs, // <- pass the array directly
+            &public_inputs,
             &VERIFYING_KEY,
         ).map_err(|_| MixerError::InvalidProof)?;
         verifier.verify().map_err(|_| MixerError::InvalidProof)?;
 
-        // TODO (soon): require! that `root` ∈ accepted roots window kept in `config`
+        // TODO: require! that `root` ∈ accepted roots window kept in `config`
 
         // Payout fixed denomination from vault PDA to recipient
         const WITHDRAW_LAMPORTS: u64 = 100_000_000;
