@@ -7,13 +7,10 @@ pub mod state;
 pub mod errors;
 pub mod verifying_key;
 
-use instructions::*;
+use instructions::*; // Initialize, Deposit, Withdraw are re-exported here
 use state::*;
 use errors::*;
 use verifying_key::VERIFYING_KEY;
-
-// Bring the accounts type in as a bare identifier so #[program] macro generates helpers cleanly
-use crate::instructions::withdraw::Withdraw as WithdrawAccounts;
 
 use spl_account_compression::{program::SplAccountCompression, Noop, ID as CMT_ID};
 use spl_noop::ID as NOOP_ID;
@@ -97,11 +94,11 @@ pub mod tornado_mixer {
     ///  6) relayer_2    (0 for now)
     ///  7) fee          (0 for now)
     pub fn withdraw(
-        ctx: Context<WithdrawAccounts>, // ✅ bare identifier, avoids __client_accounts_* crate bug
+        ctx: Context<instructions::Withdraw>, // <- use the re-exported accounts type
         proof: [u8; 256],
         root: [u8; 32],
         nullifier_hash: [u8; 32],
-        _recipient: Pubkey, // kept for IDL clarity; use accounts.recipient below
+        _recipient: Pubkey, // kept for IDL clarity; we bind to accounts.recipient below
     ) -> Result<()> {
         use groth16_solana::groth16::Groth16Verifier;
 
