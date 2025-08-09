@@ -14,44 +14,55 @@ use verifying_key::VERIFYING_KEY;
 use spl_account_compression::{program::SplAccountCompression, Noop, ID as CMT_ID};
 use spl_noop::ID as NOOP_ID;
 
-// 👇 Re-export the Accounts types at the *crate root* so we can use bare names in Context<...>
-pub use crate::instructions::{
-    initialize::Initialize,
-    deposit::Deposit,
-    withdraw::Withdraw,
-};
-
 declare_id!("2xBPdkCzfwFdc6khqbvaAvYxWcKMRaueXeVyaLRoWDrN");
+
+/// ---------------------------------------------------------------------------
+/// Anchor macro helper shim
+///
+/// The `#[program]` macro imports helper modules named
+/// `__client_accounts_<first_path_segment>` based on the type path you put in
+/// `Context<...>`. Since we use `Context<instructions::...::...>`, it expects
+/// a crate-root module called `__client_accounts_instructions`.
+///
+/// Each `#[derive(Accounts)]` generates a module like
+/// `instructions::<ix>::__client_accounts_<ix>`; we re-export them here.
+/// ---------------------------------------------------------------------------
+#[allow(non_snake_case)]
+#[doc(hidden)]
+pub mod __client_accounts_instructions {
+    pub use crate::instructions::initialize::__client_accounts_initialize::*;
+    pub use crate::instructions::deposit::__client_accounts_deposit::*;
+    pub use crate::instructions::withdraw::__client_accounts_withdraw::*;
+}
 
 #[program]
 pub mod tornado_mixer {
     use super::*;
 
     pub fn initialize(
-        ctx: Context<Initialize>,           // ✅ bare type from crate root
+        ctx: Context<instructions::initialize::Initialize>,
         _max_depth: u32,
         _max_buffer_size: u32,
     ) -> Result<()> {
-        // Tree must be owned by SPL Account Compression
         require_keys_eq!(*ctx.accounts.merkle_tree.owner, CMT_ID);
 
-        // Persist the tree so deposit() can validate against it later.
         ctx.accounts
             .config
             .set_inner(MixerConfig { merkle_tree: ctx.accounts.merkle_tree.key() });
+
         Ok(())
     }
 
-    pub fn deposit(ctx: Context<Deposit>, commitment: [u8; 32]) -> Result<()> {
-        // Sanity checks
+    pub fn deposit(
+        ctx: Context<instructions::deposit::Deposit>,
+        commitment: [u8; 32],
+    ) -> Result<()> {
         require_keys_eq!(ctx.accounts.compression_program.key(), CMT_ID);
         require_keys_eq!(ctx.accounts.noop_program.key(), NOOP_ID);
         require_keys_eq!(ctx.accounts.merkle_tree.key(), ctx.accounts.config.merkle_tree);
 
-        // 0.1 SOL in lamports
         const DEPOSIT_LAMPORTS: u64 = 100_000_000;
 
-        // Transfer SOL user -> vault
         let cpi = CpiContext::new(
             ctx.accounts.system_program.to_account_info(),
             Transfer {
@@ -61,14 +72,12 @@ pub mod tornado_mixer {
         );
         system_program::transfer(cpi, DEPOSIT_LAMPORTS)?;
 
-        // Append commitment to the SPL-owned tree (authority = vault PDA)
         let accounts = spl_account_compression::cpi::accounts::Modify {
             merkle_tree: ctx.accounts.merkle_tree.to_account_info(),
             authority:   ctx.accounts.vault.to_account_info(),
             noop:        ctx.accounts.noop_program.to_account_info(),
         };
 
-        // Sign with the vault seeds
         let signer_seeds: &[&[u8]] = &[b"vault", &[ctx.bumps.vault]];
         spl_account_compression::cpi::append(
             CpiContext::new_with_signer(
@@ -83,7 +92,7 @@ pub mod tornado_mixer {
     }
 
     pub fn withdraw(
-        ctx: Context<Withdraw>,             // ✅ bare type from crate root
+        ctx: Context<instructions::withdraw::Withdraw>,
         proof: [u8; 256],
         root: [u8; 32],
         nullifier_hash: [u8; 32],
@@ -103,7 +112,6 @@ pub mod tornado_mixer {
             out
         }
 
-        // Bind proof to the *recipient account* that will receive funds.
         let rb = ctx.accounts.recipient.key().to_bytes();
         let mut r_hi = [0u8;16]; r_hi.copy_from_slice(&rb[0..16]);
         let mut r_lo = [0u8;16]; r_lo.copy_from_slice(&rb[16..32]);
@@ -118,7 +126,6 @@ pub mod tornado_mixer {
             [0u8;32],
         ];
 
-        // --- verify Groth16 proof ---
         let mut verifier = Groth16Verifier::new(
             &proof_a, &proof_b, &proof_c, &public_inputs, &VERIFYING_KEY,
         ).map_err(|_| MixerError::InvalidProof)?;
