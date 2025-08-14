@@ -1,0 +1,377 @@
+{
+  "address": "2xBPdkCzfwFdc6khqbvaAvYxWcKMRaueXeVyaLRoWDrN",
+  "metadata": {
+    "name": "tornado_mixer",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Tornado Cash style mixer on Solana using Light Protocol"
+  },
+  "instructions": [
+    {
+      "name": "deposit",
+      "discriminator": [
+        242,
+        35,
+        198,
+        137,
+        82,
+        225,
+        242,
+        182
+      ],
+      "accounts": [
+        {
+          "name": "user",
+          "docs": [
+            "Payer; funds move from here into the vault PDA"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "docs": [
+            "Mixer config that stores the Merkle tree pubkey"
+          ]
+        },
+        {
+          "name": "merkle_tree",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "compression_program",
+          "docs": [
+            "SPL Account/State Compression program (fixed ID on cluster)"
+          ],
+          "address": "cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK"
+        },
+        {
+          "name": "noop_program",
+          "docs": [
+            "Noop program (log wrapper for changelog)"
+          ],
+          "address": "noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "commitment",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "initialize",
+      "discriminator": [
+        175,
+        175,
+        109,
+        31,
+        13,
+        152,
+        155,
+        237
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "docs": [
+            "Pays rent/fees."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "vault",
+          "docs": [
+            "signs via seeds [b\"vault\"]. No data is stored in this account."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "merkle_tree",
+          "docs": [
+            "Account Compression program cmtDvXum…). We validate ownership in the",
+            "handler. Marked mut because we'll append leaves later."
+          ],
+          "writable": true
+        },
+        {
+          "name": "config",
+          "docs": [
+            "Stores the chosen Merkle tree pubkey for later use."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "_max_depth",
+          "type": "u32"
+        },
+        {
+          "name": "_max_buffer_size",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "withdraw",
+      "discriminator": [
+        183,
+        18,
+        70,
+        156,
+        148,
+        109,
+        161,
+        34
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "docs": [
+            "Payer for the nullifier PDA rent; also tx signer."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "docs": [
+            "Mixer configuration (stores the Merkle tree pubkey, and later a roots window)."
+          ]
+        },
+        {
+          "name": "merkle_tree"
+        },
+        {
+          "name": "vault",
+          "docs": [
+            "PDA = Pubkey::find_program_address([b\"vault\"], program_id)"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "nullifier",
+          "docs": [
+            "Nullifier PDA — initialized to mark the note as spent.",
+            "PDA = Pubkey::find_program_address([b\"nullifier\", nullifier_hash.as_ref()], program_id)"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  110,
+                  117,
+                  108,
+                  108,
+                  105,
+                  102,
+                  105,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "nullifier_hash"
+              }
+            ]
+          }
+        },
+        {
+          "name": "recipient",
+          "docs": [
+            "Recipient of the withdrawal (system account for lamport transfer)."
+          ],
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "proof",
+          "type": {
+            "array": [
+              "u8",
+              256
+            ]
+          }
+        },
+        {
+          "name": "root",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "nullifier_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "_recipient",
+          "type": "pubkey"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "MixerConfig",
+      "discriminator": [
+        249,
+        68,
+        151,
+        145,
+        180,
+        148,
+        212,
+        172
+      ]
+    },
+    {
+      "name": "NullifierState",
+      "discriminator": [
+        234,
+        94,
+        162,
+        253,
+        0,
+        12,
+        107,
+        4
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "InvalidProof",
+      "msg": "Invalid zero-knowledge proof provided."
+    },
+    {
+      "code": 6001,
+      "name": "NullifierAlreadyUsed",
+      "msg": "Nullifier has already been used (note already spent)."
+    },
+    {
+      "code": 6002,
+      "name": "InsufficientBalance",
+      "msg": "Insufficient balance for deposit."
+    },
+    {
+      "code": 6003,
+      "name": "InsufficientPoolFunds",
+      "msg": "Insufficient funds in mixer pool."
+    }
+  ],
+  "types": [
+    {
+      "name": "MixerConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "merkle_tree",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "NullifierState",
+      "type": {
+        "kind": "struct",
+        "fields": []
+      }
+    }
+  ]
+}
